@@ -1,0 +1,54 @@
+============================================================
+BAO CAO THONG KE ANH
+============================================================
+
+Thoi gian tao: 02/11/2026 16:05:38
+Thu dau vao: D:\Học Tập\Lộ trình 6 tháng AI\Level 0 — Engineering Foundation\Homework1\test_anh
+File xuat: bao_cao_anh.txt
+
+------------------------------------------------------------
+PHUONG PHAP KIEM TRA (duoc ap dung voi tat ca file co duoi anh)
+------------------------------------------------------------
+  Mo file bang Pillow (Image.open) + verify() de xac thuc du lieu anh.
+
+------------------------------------------------------------
+TONG KET
+------------------------------------------------------------
+Tong so file trong thu muc: 5
+So file la anh (co duoi anh): 3
+Anh doc duoc (khong loi): 2
+Anh bi loi (khong doc duoc): 1
+File khong phai anh (bo qua, khong loi): 2
+
+------------------------------------------------------------
+DANH SACH ANH KHONG LOI (2)
+------------------------------------------------------------
+  [OK] ok1.jpg
+       File: ok1.jpg
+       Ket qua: Khong loi - doc thanh cong bang Pillow.
+       Duoc kiem tra: Mo file bang Image.open() + verify(), khong ngoai le.
+  [OK] ok2.png
+       File: ok2.png
+       Ket qua: Khong loi - doc thanh cong bang Pillow.
+       Duoc kiem tra: Mo file bang Image.open() + verify(), khong ngoai le.
+
+------------------------------------------------------------
+DANH SACH ANH BI LOI (1)
+------------------------------------------------------------
+  [LOI] bad.jpg
+       File: bad.jpg
+       Ly do: Khong nhan duoc dinh dang anh (UnidentifiedImageError): cannot identify image file 'D:\\Học Tập\\Lộ trình 6 tháng AI\\Level 0 — Engineering Foundation\\Homework1\\test_anh\\bad.jpg' | Cach tai hien: Chay 'Image.open(r"' + filepath + '")' -> PIL khong nhan dinh dang file.
+
+------------------------------------------------------------
+DANH SACH FILE KHONG PHAI ANH (BO QUA, KHONG TINH LOI) (2)
+------------------------------------------------------------
+  [BO QUA] bao_cao_anh.txt
+       File: bao_cao_anh.txt
+       Ly do: Duoi file khong thuoc danh sach dinh dang anh ho tro.
+  [BO QUA] notes.txt
+       File: notes.txt
+       Ly do: Duoi file khong thuoc danh sach dinh dang anh ho tro.
+
+============================================================
+KET THUC BAO CAO
+============================================================
