@@ -1,142 +1,104 @@
-# Bao Cao Anh - Unit Test & Huong Dan Su Dung (v2)
+# Image Inspector (Day 3) — Package + CLI + Tests
 
 ## 1. Gioi thieu
-Chuong trinh doc tat ca anh trong **mot thu muc** (chi truc tiep, khong doc thu muc con) bang Pillow,
-phan biet anh hop le va anh bi loi, sau do xuat bao cao ra file notepad.
+Project da duoc refactor thanh package Python `image_inspector`.
+- Quet anh trong **mot thu muc** (chi truc tiep, khong doc thu muc con) bang Pillow.
+- Phan loai anh hop le / anh bi loi / file khong phai anh.
+- Xuat bao cao **JSON** qua CLI.
 
-## 2. Yeu cau he thong
-- Python 3.10+
-- Thu vien Pillow (`PIL`) - khai bao trong `requirements.txt`
-
-## 3. Cai dat moi truong (tai workspace)
-Tai truong hop nay da co env san tai:
+## 2. Cau truc project
 ```
-D:\Học Tập\Lộ trình 6 tháng AI\Level 0 — Engineering Foundation\Homework1\.venv
+Homework1/
+├── src/
+│   └── image_inspector/
+│       ├── __init__.py
+│       ├── scanner.py      # scan folder, validate images (type hints)
+│       ├── report.py       # tong hop du lieu va xuat JSON
+│       └── cli.py          # nhan arguments va goi cac module
+├── tests/
+│   ├── test_scanner.py     # 7 tests
+│   └── test_report.py      # 5 tests
+├── reports/                # thu muc output (file sinh ra bi .gitignore bo qua)
+├── pyproject.toml
+├── requirements.txt        # Pillow
+├── system_info.py          # xuat thong tin he thong JSON (stdlib only)
+├── README.md
+├── .gitignore
+├── .github/workflows/tests.yml
+└── bao_cao_anh.py, test_bao_cao_anh.py  # phien ban cu (giu de tham chieu)
 ```
 
-Kich hoat env va cai dat thu vien:
-```powershell
-# Tai thu muc Homework1
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
+## 3. Yeu cau he thong
+- Python >= 3.10 (CI dung 3.12)
+- Pillow (`requirements.txt`)
 
-Neu muon tao env moi:
+## 4. Cai dat
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
+(Linux/macOS: `source .venv/bin/activate` va `python3 -m pip install -r requirements.txt`)
 
-## 4. Chay chuong trinh (CLI bang argparse)
+## 5. Chay CLI (package)
+Chay tu thu muc goc project, dat `PYTHONPATH=src` (hoac cai package editable `pip install -e .`):
 ```powershell
-.venv\Scripts\python bao_cao_anh.py --input "D:\DuLieu\Anh"
+$env:PYTHONPATH = "src"
+.venv\Scripts\python -m image_inspector.cli --input .\test_anh --output .\reports\report.json
 ```
+Linux/macOS:
+```bash
+PYTHONPATH=src .venv/bin/python -m image_inspector.cli --input ./test_anh --output ./reports/report.json
+```
+Tham so:
+- `--input` (bat buoc): thu muc chua anh (chi quet truc tiep).
+- `--output` (bat buoc): duong dan file JSON xuat ket qua (thu muc cha duoc tu dong tao).
 
-Hoặc chỉ định tên file báo cáo đầu ra:
+## 6. Schema JSON bao cao
+`build_report()`/CLI xuat JSON gom: `report_type`, `created_at`, `input_folder`, `method`, `summary` (`total_files`, `image_files`, `valid_images`, `error_images`, `non_image_files`), `valid_images`, `error_images` (co `file`, `ok`, `reason`), `non_image_files`.
+
+## 7. Unit tests (>= 12)
+Co 12 tests trong `tests/` (7 scanner + 5 report):
+
+**tests/test_scanner.py**
+1. `test_scan_folder_voi_folder_rong` — folder rong → total 0, danh sach rong.
+2. `test_scan_folder_chua_anh_hop_le_va_anh_hong` — phan loai dung anh hop le/hong.
+3. `test_scan_folder_khong_scan_thu_muc_con` — KHONG quet nested folders.
+4. `test_scan_folder_invalid_input_path` — path khong ton tai → `FileNotFoundError`.
+5. `test_scan_folder_input_khong_phai_thu_muc` — path la file → `NotADirectoryError`.
+6. `test_is_image_file_nhan_dien_duoi` — nhan dien duoi anh (ke ca chu hoa).
+7. `test_read_image_tra_ve_checked_details` — tra ve checked_details.
+
+**tests/test_report.py**
+8. `test_build_report_co_dung_schema` — JSON co dung schema/summary keys.
+9. `test_build_report_valid_va_error_co_dung_cau_truc` — cau truc valid/error.
+10. `test_write_report_tu_tao_output_folder` — tu tao thu muc output.
+11. `test_write_report_ghi_de_file_cu` — overwrite file cu.
+12. `test_report_tich_hop_scan_folder` — tich hop scan -> build -> JSON dung.
+
+Lenh chay thong nhat (CI va local):
 ```powershell
-.venv\Scripts\python bao_cao_anh.py --input "D:\DuLieu\Anh" --output "bao_cao_anh.txt"
+$env:PYTHONPATH = "src"
+.venv\Scripts\python -m unittest discover -v -s tests
 ```
 
-Tham số:
-- `--input` (bat buoc): duong dan thu muc chua anh.
-- `--output` (tuc chon, mac dinh `bao_cao_anh.txt`): ten file notepad xuat ket qua.
-
-Ví dụ trên Windows:
+## 8. system_info.py (stdlib only)
+Xuat JSON: Python version, operating system, current working directory, CPU count, `APP_ENV`, thoi gian chay script.
 ```powershell
-.venv\Scripts\python bao_cao_anh.py --input "D:\Học Tập\Lộ trình 6 tháng AI\Level 0 — Engineering Foundation\Homework1\test_anh"
+$env:APP_ENV = "dev"
+.venv\Scripts\python system_info.py
 ```
 
-Ket qua duoc luu vao:
-```
-D:\DuLieu\Anh\bao_cao_anh.txt
-```
+## 9. Linux / CLI practice (Day 3)
+Da thuc hanh cac lenh tuong duong tren PowerShell: `Get-Location` (pwd), `Get-ChildItem` (ls/dir), `New-Item -ItemType Directory` (mkdir), `Get-Process` (ps), `netstat -ano` (ports), `$env:NAME` (env), `python -m ...` (module). `system_info.py` minh hoa doc env `APP_ENV`.
 
-Xem huong dan su dung ngan gan:
+## 10. CI (GitHub Actions)
+Workflow `.github/workflows/tests.yml`: chay khi push/PR, `ubuntu-latest`, checkout, setup Python 3.12, cai `requirements.txt`, chay `python -m unittest discover -v -s tests` (voi `PYTHONPATH=src`).
+
+## 11. Commit & push
 ```powershell
-.venv\Scripts\python bao_cao_anh.py --help
-```
-
-## 5. Luat nghiep vu
-- Chi doc file co duoi anh o **TRUC TIEP** trong thu muc nhap vao.
-- KHONG doc trong cac thu muc con.
-- File khong phai anh (duoi khong thuoc danh sach) se bo qua, KHONG tinh loi.
-- Anh khong doc duoc boi Pillow se danh dau la [LOI] trong bao cao.
-- Bao cao xuat ra file notepad (UTF-8).
-- Neu chay lai, file bao cao cu se bi xoa hoan toan va tao file moi giong ten.
-
-## 6. Cau truc bao cao notepad
-Mot file `bao_cao_anh.txt` gom:
-- Thoi gian tao, thu muc dau vao, file xuat.
-- Phuong phap kiem tra: mo file bang `Image.open()` + `verify()`.
-- Tong ket: tong so file, so anh, so anh khong loi, so anh bi loi, so file khong phai anh.
-- Danh sach ANH KHONG LOI: ten file, ket qua, duoc kiem tra gi.
-- Danh sach ANH BI LOI: ten file, ly do chi tiet, cach tai hien.
-- Danh sach FILE KHONG PHAI ANH: bo qua, khong tinh loi.
-
-## 7. Chay unit test
-Co 7 unit test trong file `test_bao_cao_anh.py`:
-1. `is_image_file` chap nhan duoi anh hop le.
-2. `is_image_file` tu choi duoi khong phai anh.
-3. `read_image` tra ve ok=True voi anh hop le.
-4. `read_image` tra ve ok=False voi anh hong.
-5. `scan_folder` dem dung so luong.
-6. `scan_folder` khong doc thu muc con.
-7. `build_report` chua cac phan khoa.
-
-Lenh chay thong nhat (trong CI va local):
-```powershell
-.venv\Scripts\python -m unittest discover -v
-```
-
-## 8. Cau truc file
-```
-Homework1/
-├── bao_cao_anh.py        # Chuong trinh chinh (argparse + pathlib)
-├── test_bao_cao_anh.py   # Unit test (unittest)
-├── requirements.txt      # Dependency: Pillow
-├── README.md             # Huong dan su dung
-├── .gitignore            # Bo loc .venv, __pycache__, *.txt (bao cao), ...
-└── .github/workflows/tests.yml  # CI: push + PR, ubuntu-latest, Python 3.12
-```
-
-## 9. Commit code len Github
-
-### Buoc 1: Kiem tra trang thai
-```powershell
-git status
-```
-
-### Buoc 2: Them file can dong bo (BO QUA .venv va bao cao sinh ra)
-```powershell
-git add bao_cao_anh.py test_bao_cao_anh.py requirements.txt README.md .gitignore .github/
-```
-
-### Buoc 3: Commit
-```powershell
-git commit -m "Refactor v2: argparse, pathlib, tach scan_folder/build_report, them unit test va CI"
-```
-
-### Buoc 4: Tao repository tren Github
-- Dang nhap https://github.com
-- Nhap "New repository", dat ten (vd: `bao-cao-anh`), KHOI TAO README (vi da co local).
-
-### Buoc 5: Len lien ket local voi Github va push
-```powershell
-git remote add origin https://github.com/<ten-ban>/<ten-repo>.git
-git branch -M main
+git add src tests pyproject.toml system_info.py README.md .gitignore .github/workflows/tests.yml requirements.txt reports/.gitignore reports/.gitkeep
+git commit -m "Day 3: package refactor image_inspector, CLI JSON, 12 tests, system_info"
 git push -u origin main
 ```
-
-### Buoc 6: Xem ket quả CI
-- Sau khi push, o repository Github, nhap tab "Actions".
-- Xem workflow "Python tests" chay lan dau.
-- Ket quả xanh/do o o day.
-
-## 10. Loi khuyen nghiep vien
-- Tat ca duong dan su dung `pathlib.Path` de ho tro Windows, Linux, Mac.
-- CLI dung `argparse` co `--input` va `--output`.
-- Tach ham `scan_folder()` (quet thu muc) va `build_report()` (xay dung noi dung bao cao) de de unit test va bao tri.
-- Khong su dung logging file; chi in thong bao ra CLI va luu bao cao notepad.
-- Tat ca file bao cao sinh ra duoc bo trong `.gitignore` (`*.txt`).
+Xem ket qua CI: GitHub repo → tab **Actions** → workflow "Python tests".

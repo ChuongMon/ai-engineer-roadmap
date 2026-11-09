@@ -1,0 +1,3 @@
+# Reports output (generated JSON files are ignored; keep folder tracked)
+*
+!.gitkeep
