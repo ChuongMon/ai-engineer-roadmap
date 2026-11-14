@@ -98,10 +98,25 @@ Cac phuong phap thuc hien tren **cung mot anh**:
 
 File dau ra: `outputs/task42/` (11 file anh).
 
-## 9. Unit tests (>= 12)
-Tong 30 tests (12 Day 3 + 10 Task 4.1 + 8 Task 4.2).
+## 8. Day 4 — Task 4.3 (ROI & Perspective Transformation)
+Chay demo:
+```powershell
+.venv\Scripts\python day4_task43.py [duong_dan_anh]
+```
+Neu khong co anh dau vao, chuong trinh tao anh mau `task43_synthetic.png` co mot nhan bi nghiêng (rotated rectangle) de minh hoa.
 
-Ket qua moi lan chay: **30 passed** (0 warning).
+Noi dung:
+- Tao anh mau nhan bi nghiêng + toa do 4 dinh.
+- Crop ROI tu bounding box chua 4 dinh nhan.
+- Perspective transform (`cv2.getPerspectiveTransform` + `cv2.warpPerspective`) chinh nhan nghiêng ve hinh chu nhat thang.
+- Ghep truoc/sau de so sanh OCR input truoc va sau preprocessing.
+
+File dau ra: `outputs/task43/` (roi_crop, perspective_corrected, before_after).
+
+## 9. Unit tests (>= 12)
+Tong 37 tests (12 Day 3 + 10 Task 4.1 + 8 Task 4.2 + 7 Task 4.3).
+
+Ket qua moi lan chay: **37 passed** (0 warning).
 
 **tests/test_scanner.py** (7): folder rong, anh hop le/hong, KHONG quet nested, invalid path, input khong phai thu muc, nhan dien duoi anh, checked_details.
 
@@ -110,6 +125,8 @@ Ket qua moi lan chay: **30 passed** (0 warning).
 **tests/test_task41.py** (10): tra ve ndarray, shape/dtype/ndim, truy cap pixel, truy cap ROI, crop, resize, transpose, BGR->RGB, BGR->Gray, luu va tai lai anh.
 
 **tests/test_task42.py** (8): Grayscale, Gaussian Blur, Threshold binary, Threshold Otsu, Adaptive Threshold, Canny edge, Morphological operations, pipeline xuat it thap 3 file.
+
+**tests/test_task43.py** (7): tao anh mau nhan bi nghiêng, doc anh, crop ROI, perspective transform output shape, ma tran bien doi hop le, giu nguyen kenh mau, ghep truoc/sau.
 
 Lenh chay thong nhat (CI va local):
 ```powershell
