@@ -9,6 +9,7 @@ venv/
 *.txt
 reports/
 outputs/
+task41_synthetic.png
 *.egg-info/
 dist/
 build/
