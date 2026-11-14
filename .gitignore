@@ -8,6 +8,7 @@ venv/
 .vscode/
 *.txt
 reports/
+outputs/
 *.egg-info/
 dist/
 build/
