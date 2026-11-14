@@ -11,7 +11,11 @@ import cv2
 import numpy as np
 import pytest
 
-from day4_task41 import create_synthetic_image, load_image
+from day4_task41 import (
+    create_synthetic_image,
+    load_image,
+    validate_image_min_size,
+)
 
 
 @pytest.fixture
@@ -102,3 +106,17 @@ def test_synthetic_image_is_written_and_reloadable(tmp_path: Path) -> None:
     reloaded = cv2.imread(str(p), cv2.IMREAD_COLOR)
     assert reloaded is not None
     assert reloaded.shape == img.shape
+
+
+def test_validate_image_min_size_rejects_small_image() -> None:
+    """Anh qua nho phai bi tu choi boi validate_image_min_size."""
+    small = np.zeros((50, 50, 3), dtype=np.uint8)
+    with pytest.raises(ValueError):
+        validate_image_min_size(small, min_h=201, min_w=251)
+
+
+def test_validate_image_min_size_accepts_big_enough_image() -> None:
+    """Anh du kich thuc khong bi raise."""
+    big = np.zeros((300, 400, 3), dtype=np.uint8)
+    # Khong giap ngoai exception
+    validate_image_min_size(big, min_h=201, min_w=251)

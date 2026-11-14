@@ -68,7 +68,8 @@ def test_canny_edge_detection(sample_image: np.ndarray) -> None:
     assert edges.dtype == np.uint8
 
 
-def test_morphological_operations(sample_image: np.ndarray) -> None:
+def test_morphology_on_canny(sample_image: np.ndarray) -> None:
+    """Morphology (erosion/dilation/opening/closing) tren Canny edge map."""
     gray = cv2.cvtColor(sample_image, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 100, 200)
     kernel = np.ones((3, 3), np.uint8)
@@ -81,18 +82,45 @@ def test_morphological_operations(sample_image: np.ndarray) -> None:
         assert op.dtype == np.uint8
 
 
+def test_morphology_on_binary(sample_image: np.ndarray) -> None:
+    """Morphology (erosion/dilation/opening/closing) tren binary threshold image."""
+    gray = cv2.cvtColor(sample_image, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    kernel = np.ones((3, 3), np.uint8)
+    eroded = cv2.erode(thresh, kernel, iterations=1)
+    dilated = cv2.dilate(thresh, kernel, iterations=1)
+    opened = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+    for op in (eroded, dilated, opened, closed):
+        assert op.shape == thresh.shape
+        assert op.dtype == np.uint8
+
+
+def test_blur_before_threshold(sample_image: np.ndarray) -> None:
+    """Blur truoc threshold co the thay doi ket qua nhi phan."""
+    gray = cv2.cvtColor(sample_image, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh_gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    _, thresh_blur = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
+    # Hai anh nhi phan phai co cung shape
+    assert thresh_gray.shape == thresh_blur.shape
+    assert thresh_gray.dtype == np.uint8
+    assert thresh_blur.dtype == np.uint8
+
+
 def test_preprocessing_pipeline_creates_outputs(
     sample_image: np.ndarray, tmp_path: Path
 ) -> None:
-    """Pipeline xuat it thap 3 file tren cung mot anh."""
+    """Pipeline xuat it thap 3 file tren cung mot anh, bao gom morphology tren binary."""
     out_dir = tmp_path / "outputs"
     outputs = preprocessing_pipeline(sample_image, out_dir)
     # Yeu cau bai tap: it thap 3 phuong phap tren cung mot anh
     assert len(outputs) >= 3
     assert "grayscale" in outputs
-    assert "canny" in outputs
-    assert "opening" in outputs
-    assert "closing" in outputs
+    assert "canny_gray" in outputs
+    assert "opening_binary" in outputs
+    assert "closing_binary" in outputs
+    assert "compare_binary_morphology" in outputs
     for name, p in outputs.items():
         assert p.exists(), f"File thieu: {name} -> {p}"
         img = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)

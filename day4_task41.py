@@ -3,13 +3,13 @@
 Chuong trinh minh hoa:
   - Doc anh thanh NumPy array (OpenCV).
   - shape, dtype, ndim.
-  - Truy cap pixel va ROI.
+  - Truy cap pixel va ROI (co kiem tra kich thuc).
   - Crop, resize, transpose.
-  - Chuyen doi RGB/BGR/Grayscale.
+  - Chuyen doi RGB/BGR/Grayscale (luu dung mau).
   - Gia thuyet tai sao OpenCV doc anh theo BGR.
 
 Chay: python day4_task41.py [duong_dan_anh]
-Neu khong co anh, chuong trinh tao anh mau tao dong de minh hoa.
+Neu khong co anh dau vao, chuong trinh tao anh mau tao dong de minh hoa.
 """
 
 from __future__ import annotations
@@ -33,15 +33,10 @@ def safe_print(text: str) -> None:
 def create_synthetic_image(path: Path) -> np.ndarray:
     """Tao anh mau co cac vung mau phan biet de minh hoa."""
     img = np.zeros((400, 600, 3), dtype=np.uint8)
-    # Vung den (background)
     img[0:400, 0:600] = (50, 50, 50)
-    # Vung xanh luc (ROI goc trai tren) - trong OpenCV la BGR
-    img[50:200, 50:250] = (0, 255, 0)
-    # Vung do (goc phai tren)
-    img[50:200, 350:550] = (0, 0, 255)
-    # Vung xanh duong (goc duoi)
-    img[250:380, 200:400] = (255, 0, 0)
-    # Duong trang qua giua
+    img[50:200, 50:250] = (0, 255, 0)      # vung xanh luc (ROI)
+    img[50:200, 350:550] = (0, 0, 255)     # vung do
+    img[250:380, 200:400] = (255, 0, 0)    # vung xanh duong
     cv2.line(img, (0, 200), (600, 200), (255, 255, 255), 3)
     cv2.imwrite(str(path), img)
     return img
@@ -60,25 +55,30 @@ def load_image(path: Path | None = None) -> np.ndarray:
     return img
 
 
-def show_array_info(img: np.ndarray, label: str = "Anh") -> None:
-    """In shape, dtype, ndim cua array."""
-    safe_print(f"\n=== {label} ===")
-    safe_print(f"shape  : {img.shape}   (chieu cao, chieu rong, so kenh mau)")
-    safe_print(f"dtype  : {img.dtype}")
-    safe_print(f"ndim   : {img.ndim}")
-    safe_print(f"kich co: {img.size} phan tu")
+def validate_image_min_size(img: np.ndarray, min_h: int, min_w: int) -> None:
+    """Kiem tra anh co kich thuc it thap nhat min_h x min_w."""
+    h, w = img.shape[:2]
+    if h < min_h or w < min_w:
+        raise ValueError(
+            f"Anh qua nho: ({h}x{w}), can it thap nhat ({min_h}x{min_w})"
+        )
 
 
 def access_pixel_and_roi(img: np.ndarray) -> None:
-    """Truy cap mot pixel va mot vung ROI."""
+    """Truy cap mot pixel va mot vung ROI voi kiem tra kich thuc."""
     h, w = img.shape[:2]
-    # Pixel o goc trai tren
+    validate_image_min_size(img, 201, 251)
+
+    # Pixel o vi tri (100, 100)
     px = img[100, 100]
     safe_print(f"\n[PIXEL] tai (hang=100, cot=100) = BGR {px.tolist()}")
 
-    # ROI: vung xanh luc o goc trai tren (50:200, 50:250)
+    # ROI vung xanh luc (50:200, 50:250)
     roi = img[50:200, 50:250]
-    safe_print(f"[ROI]  vung (50:200, 50:250) co shape {roi.shape}, mau trung binh = {roi.mean(axis=(0,1)).round(1).tolist()}")
+    safe_print(
+        f"[ROI]  vung (50:200, 50:250) co shape {roi.shape}, "
+        f"mau trung binh = {roi.mean(axis=(0, 1)).round(1).tolist()}"
+    )
 
 
 def crop_resize_transpose(img: np.ndarray, out_dir: Path) -> None:
@@ -100,18 +100,25 @@ def crop_resize_transpose(img: np.ndarray, out_dir: Path) -> None:
 
 
 def convert_color_spaces(img: np.ndarray, out_dir: Path) -> None:
-    """Chuyen doi RGB/BGR/Grayscale va luu ket qua."""
-    # OpenCV doc theo BGR. Chuyen sang RGB de hien thi thuan thieng.
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(str(out_dir / "task41_rgb.png"), rgb)
-    safe_print(f"\n[COLOR] BGR -> RGB, luu task41_rgb.png")
+    """Chuyen doi RGB/BGR/Grayscale va luu DUNG MAU.
 
-    # Chuyen sang Grayscale (tu BGR)
+    OpenCV doc theo BGR. cv2.imwrite luu theo BGR, nen neu muon luu anh RGB
+    thuc su ta can chuyen ngoc lai BGR truoc khi ghi, hoac su dung Matplotlib.
+    """
+    # BGR -> RGB (de hien thi thuan thieng voi matplotlib/PIL)
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Luu RGB bang OpenCV can chuyen ngoc lai BGR, nguoc lai mau se bi dao ngoc
+    cv2.imwrite(
+        str(out_dir / "task41_rgb.png"), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    )
+    safe_print(f"\n[COLOR] BGR -> RGB, luu task41_rgb.png (da chuyen ngoc BGR de ghi dung mau)")
+
+    # BGR -> Grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cv2.imwrite(str(out_dir / "task41_gray.png"), gray)
     safe_print(f"[COLOR] BGR -> GRAY, shape {gray.shape}, luu task41_gray.png")
 
-    # Chuyen Grayscale lai BGR (de minh hoa 1 kenh -> 3 kenh)
+    # Grayscale -> BGR (1 kenh -> 3 kenh)
     gray_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     cv2.imwrite(str(out_dir / "task41_gray2bgr.png"), gray_bgr)
     safe_print(f"[COLOR] GRAY -> BGR, shape {gray_bgr.shape}, luu task41_gray2bgr.png")

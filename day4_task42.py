@@ -2,10 +2,13 @@
 
 Thuc hien tren cung mot anh:
   - Grayscale conversion
-  - Gaussian blur
-  - Thresholding / Adaptive Threshold
+  - Gaussian blur (trước và sau threshold/Canny de so sanh)
+  - Thresholding (binary + Otsu)
+  - Adaptive Threshold
   - Canny edge detection
   - Morphological operations: Erosion, Dilation, Opening, Closing
+    * Tren Canny edge map
+    * Tren binary threshold image (de so sanh cho OCR)
 
 Chay: python day4_task42.py [duong_dan_anh]
 Neu khong co anh, chuong trinh su dung anh mau tu Task 4.1 hoac tao moi.
@@ -66,18 +69,25 @@ def preprocessing_pipeline(img: np.ndarray, out_dir: Path) -> dict[str, Path]:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     outputs["grayscale"] = save(gray, out_dir, "task42_grayscale.png")
 
-    # 2. Gaussian blur
+    # 2. Gaussian blur (tren grayscale)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     outputs["gaussian_blur"] = save(blurred, out_dir, "task42_gaussian_blur.png")
 
-    # 3. Thresholding (binary + Otsu)
-    _, thresh_binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-    outputs["threshold_binary"] = save(thresh_binary, out_dir, "task42_threshold_binary.png")
+    # 3. Thresholding tren GRAY (khong blur) va tren BLURRED (co blur)
+    _, thresh_binary_gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    outputs["threshold_binary_gray"] = save(
+        thresh_binary_gray, out_dir, "task42_threshold_binary_gray.png"
+    )
+
+    _, thresh_binary_blur = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
+    outputs["threshold_binary_blur"] = save(
+        thresh_binary_blur, out_dir, "task42_threshold_binary_blur.png"
+    )
 
     _, thresh_otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     outputs["threshold_otsu"] = save(thresh_otsu, out_dir, "task42_threshold_otsu.png")
 
-    # 4. Adaptive Threshold
+    # 4. Adaptive Threshold (tren gray)
     adaptive_mean = cv2.adaptiveThreshold(
         gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2
     )
@@ -91,22 +101,51 @@ def preprocessing_pipeline(img: np.ndarray, out_dir: Path) -> dict[str, Path]:
     )
 
     # 5. Canny edge detection
-    edges = cv2.Canny(gray, 100, 200)
-    outputs["canny"] = save(edges, out_dir, "task42_canny.png")
+    edges_gray = cv2.Canny(gray, 100, 200)
+    outputs["canny_gray"] = save(edges_gray, out_dir, "task42_canny_gray.png")
+
+    edges_blur = cv2.Canny(blurred, 100, 200)
+    outputs["canny_blur"] = save(edges_blur, out_dir, "task42_canny_blur.png")
 
     # 6. Morphological operations
     kernel = np.ones((3, 3), np.uint8)
-    eroded = cv2.erode(edges, kernel, iterations=1)
-    outputs["erosion"] = save(eroded, out_dir, "task42_erosion.png")
 
-    dilated = cv2.dilate(edges, kernel, iterations=1)
-    outputs["dilation"] = save(dilated, out_dir, "task42_dilation.png")
+    # 6a. Morphology tren CANNY edge map
+    eroded_canny = cv2.erode(edges_gray, kernel, iterations=1)
+    outputs["erosion_canny"] = save(eroded_canny, out_dir, "task42_erosion_canny.png")
 
-    opened = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel)
-    outputs["opening"] = save(opened, out_dir, "task42_opening.png")
+    dilated_canny = cv2.dilate(edges_gray, kernel, iterations=1)
+    outputs["dilation_canny"] = save(dilated_canny, out_dir, "task42_dilation_canny.png")
 
-    closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-    outputs["closing"] = save(closed, out_dir, "task42_closing.png")
+    opened_canny = cv2.morphologyEx(edges_gray, cv2.MORPH_OPEN, kernel)
+    outputs["opening_canny"] = save(opened_canny, out_dir, "task42_opening_canny.png")
+
+    closed_canny = cv2.morphologyEx(edges_gray, cv2.MORPH_CLOSE, kernel)
+    outputs["closing_canny"] = save(closed_canny, out_dir, "task42_closing_canny.png")
+
+    # 6b. Morphology tren BINARY threshold image (de so sanh cho OCR)
+    eroded_bin = cv2.erode(thresh_binary_gray, kernel, iterations=1)
+    outputs["erosion_binary"] = save(eroded_bin, out_dir, "task42_erosion_binary.png")
+
+    dilated_bin = cv2.dilate(thresh_binary_gray, kernel, iterations=1)
+    outputs["dilation_binary"] = save(dilated_bin, out_dir, "task42_dilation_binary.png")
+
+    opened_bin = cv2.morphologyEx(thresh_binary_gray, cv2.MORPH_OPEN, kernel)
+    outputs["opening_binary"] = save(opened_bin, out_dir, "task42_opening_binary.png")
+
+    closed_bin = cv2.morphologyEx(thresh_binary_gray, cv2.MORPH_CLOSE, kernel)
+    outputs["closing_binary"] = save(closed_bin, out_dir, "task42_closing_binary.png")
+
+    # 7. Anh so sanh hien tuy: canny vs binary truoc/sau morphology
+    cmp_canny = np.hstack([edges_gray, eroded_canny, dilated_canny])
+    outputs["compare_canny_morphology"] = save(
+        cmp_canny, out_dir, "task42_compare_canny_morphology.png"
+    )
+
+    cmp_binary = np.hstack([thresh_binary_gray, eroded_bin, dilated_bin])
+    outputs["compare_binary_morphology"] = save(
+        cmp_binary, out_dir, "task42_compare_binary_morphology.png"
+    )
 
     return outputs
 
@@ -117,7 +156,7 @@ def summarize(outputs: dict[str, Path]) -> None:
     safe_print("TOM TAT CAC PHUONG PHUOC PREPROCESSING")
     safe_print("=" * 60)
     for name, p in outputs.items():
-        safe_print(f"  - {name:18s} -> {p.name}")
+        safe_print(f"  - {name:32s} -> {p.name}")
     safe_print("=" * 60 + "\n")
 
 
