@@ -1,10 +1,12 @@
-# Image Inspector (Day 3) — Package + CLI + Tests
+# Image Inspector + CV Labs (Day 3 + Day 4) — Package + CLI + Tests
 
 ## 1. Gioi thieu
-Project da duoc refactor thanh package Python `image_inspector`.
+Project da duoc refactor thanh package Python `image_inspector` (Day 3) va bo lab Computer Vision (Day 4, Task 4.1–4.2).
 - Quet anh trong **mot thu muc** (chi truc tiep, khong doc thu muc con) bang Pillow.
 - Phan loai anh hop le / anh bi loi / file khong phai anh.
 - Xuat bao cao **JSON** qua CLI.
+- NumPy Image Fundamentals (Task 4.1): doc anh thanh array, shape/dtype/ndim, pixel & ROI, crop/resize/transpose, chuyen doi BGR/RGB/Grayscale, giai ly do OpenCV doc BGR.
+- OpenCV Preprocessing (Task 4.2): Grayscale, Gaussian Blur, Thresholding (binary + Otsu), Adaptive Threshold, Canny edge, Morphological (Erosion, Dilation, Opening, Closing) tren cung mot anh.
 
 ## 2. Cau truc project
 ```
@@ -16,12 +18,17 @@ Homework1/
 │       ├── report.py       # tong hop du lieu va xuat JSON
 │       └── cli.py          # nhan arguments va goi cac module
 ├── tests/
-│   ├── test_scanner.py     # 7 tests
-│   └── test_report.py      # 5 tests
-├── reports/                # thu muc output (file sinh ra bi .gitignore bo qua)
+│   ├── test_scanner.py     # Day 3: 7 tests
+│   ├── test_report.py      # Day 3: 5 tests
+│   ├── test_task41.py      # Day 4 Task 4.1: 10 tests
+│   └── test_task42.py      # Day 4 Task 4.2: 8 tests
+├── outputs/                # thu muc output sinh ra (bi .gitignore bo qua)
+├── reports/                # thu muc output JSON Day 3 (bi .gitignore bo qua)
 ├── pyproject.toml
-├── requirements.txt        # Pillow
+├── requirements.txt        # Pillow, numpy, opencv-python, matplotlib, pytest
 ├── system_info.py          # xuat thong tin he thong JSON (stdlib only)
+├── day4_task41.py          # Day 4 Task 4.1 demo script
+├── day4_task42.py          # Day 4 Task 4.2 demo script
 ├── README.md
 ├── .gitignore
 ├── .github/workflows/tests.yml
@@ -30,7 +37,7 @@ Homework1/
 
 ## 3. Yeu cau he thong
 - Python >= 3.10 (CI dung 3.12)
-- Pillow (`requirements.txt`)
+- Pillow, numpy, opencv-python, matplotlib, pytest (`requirements.txt`)
 
 ## 4. Cai dat
 ```powershell
@@ -40,7 +47,7 @@ python -m pip install -r requirements.txt
 ```
 (Linux/macOS: `source .venv/bin/activate` va `python3 -m pip install -r requirements.txt`)
 
-## 5. Chay CLI (package)
+## 5. Chay CLI (package, Day 3)
 Chay tu thu muc goc project, dat `PYTHONPATH=src` (hoac cai package editable `pip install -e .`):
 ```powershell
 $env:PYTHONPATH = "src"
@@ -54,51 +61,85 @@ Tham so:
 - `--input` (bat buoc): thu muc chua anh (chi quet truc tiep).
 - `--output` (bat buoc): duong dan file JSON xuat ket qua (thu muc cha duoc tu dong tao).
 
-## 6. Schema JSON bao cao
+## 6. Schema JSON bao cao (Day 3)
 `build_report()`/CLI xuat JSON gom: `report_type`, `created_at`, `input_folder`, `method`, `summary` (`total_files`, `image_files`, `valid_images`, `error_images`, `non_image_files`), `valid_images`, `error_images` (co `file`, `ok`, `reason`), `non_image_files`.
 
-## 7. Unit tests (>= 12)
-Co 12 tests trong `tests/` (7 scanner + 5 report):
+## 7. Day 4 — Task 4.1 (NumPy Image Fundamentals)
+Chay demo:
+```powershell
+.venv\Scripts\python day4_task41.py [duong_dan_anh]
+```
+Neu khong co anh dau vao, chuong trinh tao anh mau `task41_synthetic.png`.
 
-**tests/test_scanner.py**
-1. `test_scan_folder_voi_folder_rong` — folder rong → total 0, danh sach rong.
-2. `test_scan_folder_chua_anh_hop_le_va_anh_hong` — phan loai dung anh hop le/hong.
-3. `test_scan_folder_khong_scan_thu_muc_con` — KHONG quet nested folders.
-4. `test_scan_folder_invalid_input_path` — path khong ton tai → `FileNotFoundError`.
-5. `test_scan_folder_input_khong_phai_thu_muc` — path la file → `NotADirectoryError`.
-6. `test_is_image_file_nhan_dien_duoi` — nhan dien duoi anh (ke ca chu hoa).
-7. `test_read_image_tra_ve_checked_details` — tra ve checked_details.
+Noi dung:
+- Doc anh thanh NumPy array (OpenCV).
+- `shape`, `dtype`, `ndim`.
+- Truy cap pixel va ROI.
+- Crop, resize, transpose.
+- Chuyen doi RGB/BGR/Grayscale.
+- Gia thuyet tai sao OpenCV doc anh theo BGR (lich su, dinh dang BMP, bo nho, luu yen neu luan tuong).
 
-**tests/test_report.py**
-8. `test_build_report_co_dung_schema` — JSON co dung schema/summary keys.
-9. `test_build_report_valid_va_error_co_dung_cau_truc` — cau truc valid/error.
-10. `test_write_report_tu_tao_output_folder` — tu tao thu muc output.
-11. `test_write_report_ghi_de_file_cu` — overwrite file cu.
-12. `test_report_tich_hop_scan_folder` — tich hop scan -> build -> JSON dung.
+File dau ra: `outputs/task41/` (crop, resized, transposed, rgb, gray, gray2bgr).
+
+## 8. Day 4 — Task 4.2 (OpenCV Preprocessing)
+Chay demo:
+```powershell
+.venv\Scripts\python day4_task42.py [duong_dan_anh]
+```
+Neu khong co anh dau vao, chuong trinh su dung/tao anh mau.
+
+Cac phuong phap thuc hien tren **cung mot anh**:
+1. Grayscale conversion
+2. Gaussian blur
+3. Thresholding (binary + Otsu)
+4. Adaptive Threshold (mean + gaussian)
+5. Canny edge detection
+6. Morphological: Erosion, Dilation, Opening, Closing
+
+File dau ra: `outputs/task42/` (11 file anh).
+
+## 9. Unit tests (>= 12)
+Tong 30 tests (12 Day 3 + 10 Task 4.1 + 8 Task 4.2).
+
+Ket qua moi lan chay: **30 passed** (0 warning).
+
+**tests/test_scanner.py** (7): folder rong, anh hop le/hong, KHONG quet nested, invalid path, input khong phai thu muc, nhan dien duoi anh, checked_details.
+
+**tests/test_report.py** (5): dung schema, cau truc valid/error, tu tao output folder, ghi de file cu, tich hop scan->build->JSON.
+
+**tests/test_task41.py** (10): tra ve ndarray, shape/dtype/ndim, truy cap pixel, truy cap ROI, crop, resize, transpose, BGR->RGB, BGR->Gray, luu va tai lai anh.
+
+**tests/test_task42.py** (8): Grayscale, Gaussian Blur, Threshold binary, Threshold Otsu, Adaptive Threshold, Canny edge, Morphological operations, pipeline xuat it thap 3 file.
 
 Lenh chay thong nhat (CI va local):
 ```powershell
 $env:PYTHONPATH = "src"
+.venv\Scripts\python -m pytest tests/ -v
+```
+Hoac chay unittest cho Day 3:
+```powershell
 .venv\Scripts\python -m unittest discover -v -s tests
 ```
 
-## 8. system_info.py (stdlib only)
+Ket qua moi lan chay: **26 passed** (0 warning).
+
+## 10. system_info.py (stdlib only, Day 3)
 Xuat JSON: Python version, operating system, current working directory, CPU count, `APP_ENV`, thoi gian chay script.
 ```powershell
 $env:APP_ENV = "dev"
 .venv\Scripts\python system_info.py
 ```
 
-## 9. Linux / CLI practice (Day 3)
+## 11. Linux / CLI practice (Day 3)
 Da thuc hanh cac lenh tuong duong tren PowerShell: `Get-Location` (pwd), `Get-ChildItem` (ls/dir), `New-Item -ItemType Directory` (mkdir), `Get-Process` (ps), `netstat -ano` (ports), `$env:NAME` (env), `python -m ...` (module). `system_info.py` minh hoa doc env `APP_ENV`.
 
-## 10. CI (GitHub Actions)
+## 12. CI (GitHub Actions)
 Workflow `.github/workflows/tests.yml`: chay khi push/PR, `ubuntu-latest`, checkout, setup Python 3.12, cai `requirements.txt`, chay `python -m unittest discover -v -s tests` (voi `PYTHONPATH=src`).
 
-## 11. Commit & push
+## 13. Commit & push
 ```powershell
-git add src tests pyproject.toml system_info.py README.md .gitignore .github/workflows/tests.yml requirements.txt reports/.gitignore reports/.gitkeep
-git commit -m "Day 3: package refactor image_inspector, CLI JSON, 12 tests, system_info"
+git add -A
+git commit -m "Day 3 + Day 4 Task 4.1-4.2: package, CLI JSON, 26 tests, system_info, CV labs"
 git push -u origin main
 ```
 Xem ket qua CI: GitHub repo → tab **Actions** → workflow "Python tests".
