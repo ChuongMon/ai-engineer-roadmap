@@ -9,6 +9,7 @@ venv/
 *.txt
 reports/
 outputs/
+computer_vision_labs/outputs/
 *_synthetic.png
 *.egg-info/
 dist/

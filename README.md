@@ -150,7 +150,30 @@ $env:APP_ENV = "dev"
 ## 11. Linux / CLI practice (Day 3)
 Da thuc hanh cac lenh tuong duong tren PowerShell: `Get-Location` (pwd), `Get-ChildItem` (ls/dir), `New-Item -ItemType Directory` (mkdir), `Get-Process` (ps), `netstat -ano` (ports), `$env:NAME` (env), `python -m ...` (module). `system_info.py` minh hoa doc env `APP_ENV`.
 
-## 12. CI (GitHub Actions)
+## 12. Computer Vision Labs (Day 4 Task 4.4 — Mini Project)
+Thu muc `computer_vision_labs/` chua pipeline xu ly anh hoan chinh:
+
+```
+computer_vision_labs/
+├── data/sample.png
+├── src/loader.py, preprocessing.py, roi.py, main.py
+├── outputs/ (7 file anh + before_after.png)
+├── tests/test_pipeline.py (11 tests)
+└── README.md
+```
+
+Chay:
+```powershell
+$env:PYTHONPATH = "computer_vision_labs/src"
+.venv\Scripts\python computer_vision_labs/src/main.py --input computer_vision_labs/data/sample.png --output-dir computer_vision_labs/outputs --pts 150,100,450,120,420,280,120,260
+```
+
+Chay test:
+```powershell
+.venv\Scripts\python -m pytest computer_vision_labs/tests/ -v   # 11 passed
+```
+
+## 13. CI (GitHub Actions)
 Workflow `.github/workflows/tests.yml`: chay khi push/PR, `ubuntu-latest`, checkout, setup Python 3.12, cai `requirements.txt`, chay `python -m unittest discover -v -s tests` (voi `PYTHONPATH=src`).
 
 ## 13. Commit & push
