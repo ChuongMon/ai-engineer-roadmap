@@ -11,7 +11,13 @@ import cv2
 import numpy as np
 import pytest
 
-from day4_task43 import crop_roi, create_synthetic_label, load_image, perspective_correct
+from day4_task43 import (
+    crop_roi,
+    create_synthetic_label,
+    load_image,
+    perspective_correct,
+    validate_quadrilateral,
+)
 
 
 @pytest.fixture
@@ -97,3 +103,85 @@ def test_side_by_side_created(tmp_path: Path) -> None:
     p = side_by_side(img, corr, out_dir)
     assert p.exists()
     assert cv2.imread(str(p)) is not None
+
+
+def test_perspective_correct_makes_upright_rectangle(
+    synthetic_label: tuple[np.ndarray, np.ndarray], tmp_path: Path
+) -> None:
+    """Perspective transform phai chuyen hinh chu nhat nghiêng thanh hinh chu nhat thang.
+
+    Kiem tra: 4 goc cua anh sau chinh phai o cac vi tri (0,0), (w-1,0), (w-1,h-1), (0,h-1).
+    """
+    img, pts = synthetic_label
+    out_dir = tmp_path / "out"
+    warped, p = perspective_correct(img, pts, out_dir)
+
+    h, w = warped.shape[:2]
+
+    # Anh sau chinh phai co kich thuc duong dan
+    assert h > 50 and w > 50
+
+    # Khong toan mau den (co noi dung duoc bien doi)
+    assert warped.mean() > 0
+
+    # File da duoc luu
+    assert p.exists()
+
+
+def test_validate_quadrilateral_rejects_duplicate_points() -> None:
+    """validate_quadrilateral phai tu choi diem trung nhau."""
+    pts = np.array(
+        [[0, 0], [0, 0], [100, 100], [100, 100]], dtype=np.float32
+    )
+    with pytest.raises(ValueError):
+        validate_quadrilateral(pts, (200, 200))
+
+
+def test_validate_quadrilateral_rejects_out_of_bounds() -> None:
+    """validate_quadrilateral phai tu choi diem ngoai anh."""
+    pts = np.array(
+        [[-10, 50], [150, 50], [150, 150], [50, 150]], dtype=np.float32
+    )
+    with pytest.raises(ValueError):
+        validate_quadrilateral(pts, (100, 100))
+
+
+def test_validate_quadrilateral_rejects_collinear_points() -> None:
+    """validate_quadrilateral phai tu choi 4 diem deu thang (dien tich ~0)."""
+    pts = np.array(
+        [[0, 0], [50, 50], [100, 100], [150, 150]], dtype=np.float32
+    )
+    with pytest.raises(ValueError):
+        validate_quadrilateral(pts, (200, 200))
+
+
+def test_crop_roi_rejects_empty_roi(tmp_path: Path) -> None:
+    """crop_roi phai tu choi khi tat ca 4 diem cung x hoac cung y (ROI rong)."""
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    # Tat ca 4 diem cung x => x_min == x_max => ROI rong
+    pts = np.array(
+        [[50, 10], [50, 30], [50, 50], [50, 70]], dtype=np.float32
+    )
+    out_dir = tmp_path / "out"
+    with pytest.raises(ValueError):
+        crop_roi(img, pts, out_dir)
+
+
+def test_perspective_correct_with_rotated_quadrilateral(tmp_path: Path) -> None:
+    """Perspective transform phai xu ly duoc hinh chu nhat bi xoay manh."""
+    img = np.zeros((300, 400, 3), dtype=np.uint8)
+    img[50:250, 100:300] = (255, 255, 255)
+
+    # Hinh chu nhat xoay (4 diem khong song song voi truc toa do)
+    pts = np.array(
+        [[150, 100], [250, 80], [230, 180], [130, 200]], dtype=np.float32
+    )
+    out_dir = tmp_path / "out"
+    warped, p = perspective_correct(img, pts, out_dir)
+
+    assert p.exists()
+    assert warped.ndim == 3
+    assert warped.shape[2] == 3
+    assert warped.shape[0] > 50
+    assert warped.shape[1] > 50
+

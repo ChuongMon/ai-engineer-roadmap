@@ -8,6 +8,35 @@ import cv2
 import numpy as np
 
 
+def validate_quadrilateral(pts: np.ndarray, img_shape: tuple[int, int]) -> None:
+    """Kiem tra 4 diem goc co hop le cho perspective transform.
+
+    Kiem tra:
+    - Dung 4 diem khac nhau.
+    - Khong co diem trùng nhau.
+    - Toa do nam trong khoang anh (0 <= x < w, 0 <= y < h).
+    - Dien tich tui giac lon hon 0 (khong deu thang / khong bo goc).
+    """
+    if pts.shape != (4, 2):
+        raise ValueError(f"Can dung dung 4 diem (4,2), nhan duoc {pts.shape}")
+
+    h, w = img_shape[:2]
+
+    for i, (x, y) in enumerate(pts):
+        if not (0 <= x < w and 0 <= y < h):
+            raise ValueError(f"Diem {i} ({x},{y}) nam ngoai anh (w={w}, h={h})")
+
+    unique_pts = np.unique(pts, axis=0)
+    if unique_pts.shape[0] < 4:
+        raise ValueError(f"Co {4 - unique_pts.shape[0]} diem trung nhau, can 4 diem khac nhau")
+
+    x = pts[:, 0]
+    y = pts[:, 1]
+    area = 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+    if area < 1.0:
+        raise ValueError(f"Dien tich tui giac qua nho ({area:.2f}), diem deu thang hoac bo goc")
+
+
 def crop_roi(
     image: np.ndarray,
     bbox: tuple[int, int, int, int],
@@ -20,6 +49,9 @@ def crop_roi(
 
     Returns:
         Anh da cat ROI.
+
+    Raises:
+        ValueError: Neu ROI rong sau khi cat.
     """
     x_min, y_min, x_max, y_max = bbox
     h, w = image.shape[:2]
@@ -28,6 +60,9 @@ def crop_roi(
     y_min = max(0, y_min)
     x_max = min(w, x_max)
     y_max = min(h, y_max)
+
+    if x_max <= x_min or y_max <= y_min:
+        raise ValueError("ROI rong sau khi cat (x_max <= x_min hoac y_max <= y_min)")
 
     return image[y_min:y_max, x_min:x_max].copy()
 
@@ -61,7 +96,11 @@ def perspective_transform(
 
     Returns:
         Anh da chinh perspective.
+
+    Raises:
+        ValueError: Neu 4 diem khong hop le.
     """
+    validate_quadrilateral(pts, image.shape)
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
 
@@ -73,6 +112,11 @@ def perspective_transform(
         height_a = np.linalg.norm(tr - br)
         height_b = np.linalg.norm(tl - bl)
         output_height = int(max(height_a, height_b))
+
+    if output_width < 10 or output_height < 10:
+        raise ValueError(
+            f"Kich thuc ket qua qua nho: {output_width}x{output_height}"
+        )
 
     dst = np.array(
         [

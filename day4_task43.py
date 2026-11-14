@@ -1,11 +1,16 @@
 """Task 4.3 - ROI & Perspective Transformation.
 
-Quan trọng cho OCR cong nghiep:
-  - Crop vung thong tin tu bounding box.
+Quan trong cho OCR cong nghiep:
+  - Cat vung thong tin tu bounding box.
   - Perspective transform: chinh vung nhan bi nghiêng.
   - So sanh OCR input truoc va sau preprocessing.
 
-Chay: python day4_task43.py [duong_dan_anh]
+Chay: python day4_task43.py [duong_dan_anh] [x1,y1,x2,y2,x3,y3,x4,y4]
+  - duong_dan_anh: anh dau vao (bat buoc neu khong co anh mau).
+  - x1,y1,...,x4,y4: 4 toa do goc cua vung nhan (trai-tren, phai-tren,
+    phai-duoi, trai-duoi). Neu khong co, chuong trinh se bao loi thay thay
+    the bang anh synthetic.
+
 Neu khong co anh dau vao, chuong trinh tao anh mau co nhan bi nghiêng de minh hoa.
 """
 
@@ -27,31 +32,26 @@ def safe_print(text: str) -> None:
         sys.stdout.buffer.write(text.encode("utf-8", errors="replace") + b"\n")
 
 
-def create_synthetic_label(path: Path) -> np.ndarray:
+def create_synthetic_label(path: Path) -> tuple[np.ndarray, np.ndarray]:
     """Tao anh mau co mot hinh chu nhat bi nghiêng (mo phong nhan san pham).
 
-    Tra ve anh goc va toa do 4 dinh cua vung nhan (goc trai tren, goc phai tren,
-    goc phai duoi, goc trai duoi) theo thu tu can thiet cho perspective transform.
+    Tra ve (anh, pts) voi pts la 4 toa do goc (trai-tren, phai-tren,
+    phai-duoi, trai-duoi) kieu float32.
     """
     img = np.zeros((500, 700, 3), dtype=np.uint8)
     img[0:500, 0:700] = (240, 240, 240)  # nen xam nhat
 
-    # Ve mot hinh chu nhat bi nghiêng (mo phong nhan dan ong)
-    # 4 dinh: (x, y)
+    # 4 dinh cua hinh chu nhat bi nghiêng
     pts = np.array(
         [[180, 120], [520, 150], [480, 320], [140, 300]], dtype=np.float32
     )
     pts_int = pts.astype(np.int32)
     cv2.fillConvexPoly(img, pts_int, (255, 255, 255))
 
-    # Ve chu "LABEL" o trong vung nhan (mo phong text)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    # Dat text o tam cua vung nhan (khoang tam cua 4 dinh)
     cx = int(pts[:, 0].mean())
     cy = int(pts[:, 1].mean())
     cv2.putText(img, "LABEL", (cx - 60, cy + 10), font, 1.4, (0, 0, 0), 3, cv2.LINE_AA)
-
-    # Ve duong vien den xung quanh de de nhan dinh
     cv2.polylines(img, [pts_int], isClosed=True, color=(0, 0, 0), thickness=2)
 
     cv2.imwrite(str(path), img)
@@ -60,11 +60,13 @@ def create_synthetic_label(path: Path) -> np.ndarray:
 
 
 def load_image(path: Path | None = None) -> tuple[np.ndarray, np.ndarray | None]:
-    """Doc anh. Neu khong co, tao anh mau va tra ve toa do 4 dinh nhan."""
-    if path is None:
-        path = Path("task43_synthetic.png")
-    if not path.exists():
-        img, pts = create_synthetic_label(path)
+    """Doc anh bang OpenCV.
+
+    Neu khong co duong dan hoac file khong ton tai -> tao anh mau va tra ve pts.
+    Neu co duong dan hop le -> tra ve (anh, None) (nguoi dung phai cung cap pts qua CLI).
+    """
+    if path is None or not path.exists():
+        img, pts = create_synthetic_label(Path("task43_synthetic.png"))
         return img, pts
     img = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if img is None:
@@ -72,19 +74,94 @@ def load_image(path: Path | None = None) -> tuple[np.ndarray, np.ndarray | None]
     return img, None
 
 
+def parse_pts(pts_str: str | None, expected: int = 8) -> np.ndarray | None:
+    """Chuyen chuoi "x1,y1,x2,y2,x3,y3,x4,y4" thanh mang (4,2) float32.
+
+    Tra ve None neu pts_str la None.
+    Ra ValueError neu so luong toa do khong dung.
+    """
+    if pts_str is None:
+        return None
+    coords = [int(v.strip()) for v in pts_str.split(",")]
+    if len(coords) != expected:
+        raise ValueError(
+            f"Can dung {expected} toa do (x1,y1,...,x4,y4), nhan duoc {len(coords)}"
+        )
+    return np.array(
+        [
+            [coords[0], coords[1]],
+            [coords[2], coords[3]],
+            [coords[4], coords[5]],
+            [coords[6], coords[7]],
+        ],
+        dtype=np.float32,
+    )
+
+
+def validate_quadrilateral(pts: np.ndarray, img_shape: tuple[int, int]) -> None:
+    """Kiem tra 4 diem goc co hop lệ cho perspective transform.
+
+    Kiem tra:
+    - Dung 4 diem khac nhau.
+    - Khong co diem trùng nhau.
+    - Toa do nam trong khoang anh (0 <= x < w, 0 <= y < h).
+    - Dien tich tui giac lon hon 0 (khong deu thang / khong bo goc).
+    """
+    if pts.shape != (4, 2):
+        raise ValueError(f"Can dung dung 4 diem (4,2), nhan duoc {pts.shape}")
+
+    h, w = img_shape[:2]
+
+    # 1. Toa do nam trong anh
+    for i, (x, y) in enumerate(pts):
+        if not (0 <= x < w and 0 <= y < h):
+            raise ValueError(
+                f"Diem {i} ({x},{y}) nam ngoai anh (w={w}, h={h})"
+            )
+
+    # 2. Khong co diem trùng nhau
+    unique_pts = np.unique(pts, axis=0)
+    if unique_pts.shape[0] < 4:
+        raise ValueError(f"Co {4 - unique_pts.shape[0]} diem trung nhau, can 4 diem khac nhau")
+
+    # 3. Tinh dien tich tui giac (shoelace formula)
+    x = pts[:, 0]
+    y = pts[:, 1]
+    area = 0.5 * np.abs(
+        np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1))
+    )
+    if area < 1.0:
+        raise ValueError(f"Dien tich tui giac qua nho ({area:.2f}), diem deu thang hoac bo goc")
+
+
+def order_points(pts: np.ndarray) -> np.ndarray:
+    """Sap xep 4 diem theo thu tu: trai-tren, phai-tren, phai-duoi, trai-duoi."""
+    rect = np.zeros((4, 2), dtype=np.float32)
+    s = pts.sum(axis=1)
+    diff = np.diff(pts, axis=1)
+
+    rect[0] = pts[np.argmin(s)]    # trai-tren
+    rect[2] = pts[np.argmax(s)]    # phai-duoi
+    rect[1] = pts[np.argmin(diff)] # phai-tren
+    rect[3] = pts[np.argmax(diff)] # trai-duoi
+    return rect
+
+
 def crop_roi(img: np.ndarray, pts: np.ndarray, out_dir: Path) -> tuple[np.ndarray, Path]:
-    """Crop vung bounding box chua 4 dinh nhan."""
+    """Cat vung bounding box chua 4 diem nhan."""
     x_min = int(pts[:, 0].min())
     y_min = int(pts[:, 1].min())
     x_max = int(pts[:, 0].max())
     y_max = int(pts[:, 1].max())
 
-    # Bo khong qua anh
     h, w = img.shape[:2]
     x_min = max(0, x_min)
     y_min = max(0, y_min)
     x_max = min(w, x_max)
     y_max = min(h, y_max)
+
+    if x_max <= x_min or y_max <= y_min:
+        raise ValueError("ROI rong sau khi cat (x_max <= x_min hoac y_max <= y_min)")
 
     roi = img[y_min:y_max, x_min:x_max].copy()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -94,26 +171,15 @@ def crop_roi(img: np.ndarray, pts: np.ndarray, out_dir: Path) -> tuple[np.ndarra
     return roi, p
 
 
-def perspective_correct(img: np.ndarray, pts: np.ndarray, out_dir: Path) -> tuple[np.ndarray, Path]:
-    """Chinh vung nhan bi nghiêng bang perspective transform.
+def perspective_correct(
+    img: np.ndarray, pts: np.ndarray, out_dir: Path
+) -> tuple[np.ndarray, Path]:
+    """Chinh vung nhan bi nghiêng bang perspective transform."""
+    validate_quadrilateral(pts, img.shape)
 
-    Map 4 dinh nhan (nghiêng) ve mot hinh chu nhat thang binh thuong.
-    """
-    # Thu tuc sap xep 4 dinh theo thu tu: trai-tren, phai-tren, phai-duoi, trai-duoi
-    # pts dau vao da duoc sap xep theo thu luon trong create_synthetic_label,
-    # nhung de an toan ta sap xep lai lai.
-    rect = np.zeros((4, 2), dtype=np.float32)
-
-    s = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1)
-
-    rect[0] = pts[np.argmin(s)]    # trai-tren (x min + y min)
-    rect[2] = pts[np.argmax(s)]    # phai-duoi (x max + y max)
-    rect[1] = pts[np.argmin(diff)] # phai-tren (x max - y min nho nhat)
-    rect[3] = pts[np.argmax(diff)] # trai-duoi
-
-    # Tinh chieu dai / chieu rong cua hinh chu nhat dich
+    rect = order_points(pts)
     (tl, tr, br, bl) = rect
+
     width_a = np.linalg.norm(br - bl)
     width_b = np.linalg.norm(tr - tl)
     max_width = int(max(width_a, width_b))
@@ -122,15 +188,23 @@ def perspective_correct(img: np.ndarray, pts: np.ndarray, out_dir: Path) -> tupl
     height_b = np.linalg.norm(tl - bl)
     max_height = int(max(height_a, height_b))
 
-    # Dinh dinh dich (hinh chu nhat thang)
+    if max_width < 10 or max_height < 10:
+        raise ValueError(
+            f"Kich thuc ket qua qua nho: {max_width}x{max_height}"
+        )
+
     dst = np.array(
-        [[0, 0], [max_width - 1, 0], [max_width - 1, max_height - 1], [0, max_height - 1]],
+        [
+            [0, 0],
+            [max_width - 1, 0],
+            [max_width - 1, max_height - 1],
+            [0, max_height - 1],
+        ],
         dtype=np.float32,
     )
 
-    # Ma tran bien doi perspective
-    M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(img, M, (max_width, max_height))
+    m = cv2.getPerspectiveTransform(rect, dst)
+    warped = cv2.warpPerspective(img, m, (max_width, max_height))
 
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "task43_perspective_corrected.png"
@@ -148,7 +222,6 @@ def side_by_side(original: np.ndarray, corrected: np.ndarray, out_dir: Path) -> 
     canvas[0:h1, 0:w1] = original
     canvas[0:h2, w1 : w1 + w2] = corrected
 
-    # Chu thich
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(canvas, "Truoc (nghiêng)", (10, 30), font, 0.8, (0, 0, 255), 2)
     cv2.putText(canvas, "Sau (da chinh)", (w1 + 10, 30), font, 0.8, (0, 255, 0), 2)
@@ -162,13 +235,22 @@ def side_by_side(original: np.ndarray, corrected: np.ndarray, out_dir: Path) -> 
 
 def main() -> int:
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    pts_str = sys.argv[2] if len(sys.argv) > 2 else None
     out_dir = Path("outputs/task43")
 
     img, pts = load_image(path)
 
-    if pts is None:
-        # Neu anh dau vao khong co toa do, tao anh mau de minh hoa
-        img, pts = create_synthetic_label(Path("task43_synthetic.png"))
+    # Neu nguoi dung khong cung cap pts qua CLI va anh khong co pts (load tu file thuc),
+    # thi bao loi thay the thay the anh goc bang anh synthetic.
+    if pts is None and pts_str is None:
+        raise ValueError(
+            "Can cung cap 4 toa do goc qua tham so --pts (x1,y1,x2,y2,x3,y3,x4,y4) "
+            "khi su dung anh thuc. Vi du:\n"
+            "  python day4_task43.py anh.jpg 150,100,450,120,420,280,120,260"
+        )
+
+    if pts_str is not None:
+        pts = parse_pts(pts_str)
 
     safe_print(f"\nAnh goc: {img.shape}, dtype={img.dtype}")
     safe_print(f"Toa do 4 dinh nhan:\n{pts}")

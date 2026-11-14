@@ -63,8 +63,13 @@ def save_image(array: np.ndarray, output_path: str | Path) -> Path:
 
     Returns:
         Duong dan file da luu.
+
+    Raises:
+        ValueError: Neu cv2.imwrite that bai.
     """
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(out_path), array)
+    success = cv2.imwrite(str(out_path), array)
+    if not success:
+        raise ValueError(f"Khong the ghi file anh: {out_path}")
     return out_path

@@ -11,7 +11,7 @@ import numpy as np
 
 from loader import ImageData, load_image, save_image
 from preprocessing import preprocess_pipeline
-from roi import crop_and_perspective
+from roi import crop_and_perspective, validate_quadrilateral
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -35,6 +35,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Toa do 4 diem perspective (x1,y1,x2,y2,x3,y3,x4,y4), neu muon chinh perspective.",
     )
     return parser.parse_args(argv)
+
+
+def validate_pts_in_image(pts: np.ndarray, img_shape: tuple[int, int]) -> None:
+    """Kiem tra tat ca toa do 4 diem nam trong khoang anh."""
+    h, w = img_shape[:2]
+    for i, (x, y) in enumerate(pts):
+        if not (0 <= x < w and 0 <= y < h):
+            raise ValueError(f"Diem {i} ({x},{y}) nam ngoai anh (w={w}, h={h})")
 
 
 def run_pipeline(
@@ -82,6 +90,13 @@ def run_pipeline(
             ],
             dtype=np.float32,
         )
+
+        # Validate toa do nam trong anh
+        validate_pts_in_image(pts_array, image.shape)
+
+        # Validate quadrilateral
+        validate_quadrilateral(pts_array, image.shape)
+
         roi, corrected = crop_and_perspective(image, pts_array)
         saved["roi"] = save_image(roi, output_path / "roi.png")
         saved["perspective"] = save_image(corrected, output_path / "perspective.png")

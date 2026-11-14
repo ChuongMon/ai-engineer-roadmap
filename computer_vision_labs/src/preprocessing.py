@@ -8,17 +8,27 @@ import cv2
 import numpy as np
 
 
+def _validate_kernel_size(kernel_size: int) -> int:
+    """Kiem tra kich thuc kernel: phai duong va le."""
+    if kernel_size <= 0:
+        raise ValueError(f"kernel_size phai duong, nhan duoc {kernel_size}")
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    return kernel_size
+
+
 def to_grayscale(image: np.ndarray) -> np.ndarray:
-    """Chuyen anh BGR sang Grayscale."""
+    """Chuyen anh BGR/BGRA sang Grayscale."""
     if len(image.shape) == 2:
         return image.copy()
+    if image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
 def denoise(image: np.ndarray, kernel_size: int = 5) -> np.ndarray:
     """Lam muot anh bang Gaussian blur de loai nhieu."""
-    if kernel_size % 2 == 0:
-        kernel_size += 1
+    kernel_size = _validate_kernel_size(kernel_size)
     return cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
 
 
