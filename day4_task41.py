@@ -165,7 +165,9 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     img = load_image(path)
-    show_array_info(img, "Anh goc (OpenCV doc)")
+    safe_print(
+        f"\n[ARRAY] Anh goc (OpenCV doc): shape={img.shape}, dtype={img.dtype}, ndim={img.ndim}"
+    )
     access_pixel_and_roi(img)
     crop_resize_transpose(img, out_dir)
     convert_color_spaces(img, out_dir)
