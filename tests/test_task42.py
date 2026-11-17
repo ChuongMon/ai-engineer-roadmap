@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 import pytest
 
-from day4_task42 import load_image, preprocessing_pipeline
+from day4_task42 import load_image, main, preprocessing_pipeline
 
 
 @pytest.fixture
@@ -126,3 +126,18 @@ def test_preprocessing_pipeline_creates_outputs(
         img = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)
         assert img is not None, f"Khong doc lai duoc: {p}"
         assert img.size > 0
+
+
+def test_main_processes_image_from_selected_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    image_path = tmp_path / "label.png"
+    cv2.imwrite(str(image_path), np.zeros((200, 300, 3), dtype=np.uint8))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "day4_task42.select_first_image_from_folder",
+        lambda title: image_path,
+    )
+
+    assert main([]) == 0
+    assert (tmp_path / "outputs/task42/task42_grayscale.png").is_file()

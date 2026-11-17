@@ -14,6 +14,7 @@ import pytest
 from day4_task41 import (
     create_synthetic_image,
     load_image,
+    main,
     validate_image_min_size,
 )
 
@@ -120,3 +121,18 @@ def test_validate_image_min_size_accepts_big_enough_image() -> None:
     big = np.zeros((300, 400, 3), dtype=np.uint8)
     # Khong giap ngoai exception
     validate_image_min_size(big, min_h=201, min_w=251)
+
+
+def test_main_processes_image_from_selected_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    image_path = tmp_path / "label.png"
+    create_synthetic_image(image_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "day4_task41.select_first_image_from_folder",
+        lambda title: image_path,
+    )
+
+    assert main([]) == 0
+    assert (tmp_path / "outputs/task41/task41_gray.png").is_file()

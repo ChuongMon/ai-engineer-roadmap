@@ -2,9 +2,16 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from PIL import Image
 
-from bao_cao_anh import is_image_file, read_image, scan_folder, build_report
+from bao_cao_anh import (
+    build_report,
+    is_image_file,
+    main,
+    read_image,
+    scan_folder,
+)
 
 
 class TestBaoCaoAnh(unittest.TestCase):
@@ -101,6 +108,47 @@ class TestBaoCaoAnh(unittest.TestCase):
             Image.new("RGB", (5, 5), (0, 0, 0)).save(tmp / "ok.jpg")
             valid, errors, non_images, total, checked = scan_folder(tmp)
             self.assertIsNotNone(checked)
+
+    @patch("bao_cao_anh.tk.Tk")
+    @patch("bao_cao_anh.askdirectory", return_value="")
+    @patch("bao_cao_anh.scan_folder")
+    def test_main_cancel_selection_exits_without_report(
+        self, scan_folder_mock, askdirectory_mock, tk_mock
+    ):
+        """Huy chon thu muc phai thoat em va khong tao report."""
+        root = tk_mock.return_value
+
+        result = main(["--output", "report.txt"])
+
+        self.assertEqual(result, 0)
+        askdirectory_mock.assert_called_once_with(
+            title="Chon thu muc chua anh can thong ke",
+            parent=root,
+        )
+        root.withdraw.assert_called_once()
+        root.destroy.assert_called_once()
+        scan_folder_mock.assert_not_called()
+
+    @patch("bao_cao_anh.tk.Tk")
+    @patch("bao_cao_anh.askdirectory")
+    def test_main_scans_selected_folder_and_writes_report(
+        self, askdirectory_mock, tk_mock
+    ):
+        """Thu muc chon trong dialog duoc dung de scan va luu report."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            selected_folder = Path(tmpdir)
+            Image.new("RGB", (5, 5), (0, 0, 0)).save(selected_folder / "ok.png")
+            askdirectory_mock.return_value = str(selected_folder)
+
+            result = main(["--output", "custom-report.txt"])
+
+            report_path = selected_folder / "custom-report.txt"
+            self.assertEqual(result, 0)
+            self.assertTrue(report_path.is_file())
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn("Thu dau vao: " + str(selected_folder), report)
+            self.assertIn("ok.png", report)
+            tk_mock.return_value.destroy.assert_called_once()
 
 
 if __name__ == "__main__":

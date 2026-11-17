@@ -15,6 +15,7 @@ from day4_task43 import (
     crop_roi,
     create_synthetic_label,
     load_image,
+    main,
     perspective_correct,
     validate_quadrilateral,
 )
@@ -184,4 +185,39 @@ def test_perspective_correct_with_rotated_quadrilateral(tmp_path: Path) -> None:
     assert warped.shape[2] == 3
     assert warped.shape[0] > 50
     assert warped.shape[1] > 50
+
+
+def test_main_uses_selected_image_and_gui_points(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    image_path = tmp_path / "label.png"
+    _, points = create_synthetic_label(image_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "day4_task43.select_first_image_from_folder",
+        lambda title: image_path,
+    )
+    monkeypatch.setattr(
+        "day4_task43.prompt_for_points",
+        lambda image_shape: points,
+    )
+
+    assert main([]) == 0
+    assert (tmp_path / "outputs/task43/task43_perspective_corrected.png").is_file()
+
+
+def test_main_stops_if_gui_point_entry_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    image_path = tmp_path / "label.png"
+    create_synthetic_label(image_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "day4_task43.select_first_image_from_folder",
+        lambda title: image_path,
+    )
+    monkeypatch.setattr("day4_task43.prompt_for_points", lambda image_shape: None)
+
+    assert main([]) == 0
+    assert not (tmp_path / "outputs/task43").exists()
 

@@ -11,7 +11,8 @@ Thuc hien tren cung mot anh:
     * Tren binary threshold image (de so sanh cho OCR)
 
 Chay: python day4_task42.py [duong_dan_anh]
-Neu khong co anh, chuong trinh su dung anh mau tu Task 4.1 hoac tao moi.
+Neu khong co duong dan, chon thu muc anh; task dung anh doc duoc dau tien
+theo ten file. Huy chon se chay demo synthetic nhu truoc.
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+
+from image_picker import select_first_image_from_folder
 
 
 def safe_print(text: str) -> None:
@@ -160,8 +163,23 @@ def summarize(outputs: dict[str, Path]) -> None:
     safe_print("=" * 60 + "\n")
 
 
-def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if args:
+        path = Path(args[0])
+    else:
+        try:
+            path = select_first_image_from_folder(
+                "Chon thu muc anh cho Task 4.2"
+            )
+        except FileNotFoundError as exc:
+            safe_print(f"[ERROR] {exc}")
+            return 1
+        if path is None:
+            safe_print("[INFO] Da huy chon thu muc; chay demo synthetic.")
+        else:
+            safe_print(f"[INFO] Anh dau tien duoc chon: {path.name}")
+
     out_dir = Path("outputs/task42")
 
     img = load_image(path)

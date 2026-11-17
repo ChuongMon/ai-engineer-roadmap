@@ -8,8 +8,9 @@ Chuong trinh minh hoa:
   - Chuyen doi RGB/BGR/Grayscale (luu dung mau).
   - Gia thuyet tai sao OpenCV doc anh theo BGR.
 
-Chay: python day4_task41.py [duong_dan_anh]
-Neu khong co anh dau vao, chuong trinh tao anh mau tao dong de minh hoa.
+  Chay: python day4_task41.py [duong_dan_anh]
+  Neu khong co duong dan, chon thu muc anh; task dung anh doc duoc dau tien
+  theo ten file. Huy chon se chay demo synthetic nhu truoc.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+
+from image_picker import select_first_image_from_folder
 
 
 def safe_print(text: str) -> None:
@@ -159,8 +162,23 @@ def explain_bgr() -> None:
     safe_print("=" * 70 + "\n")
 
 
-def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if args:
+        path = Path(args[0])
+    else:
+        try:
+            path = select_first_image_from_folder(
+                "Chon thu muc anh cho Task 4.1"
+            )
+        except FileNotFoundError as exc:
+            safe_print(f"[ERROR] {exc}")
+            return 1
+        if path is None:
+            safe_print("[INFO] Da huy chon thu muc; chay demo synthetic.")
+        else:
+            safe_print(f"[INFO] Anh dau tien duoc chon: {path.name}")
+
     out_dir = Path("outputs/task41")
     out_dir.mkdir(parents=True, exist_ok=True)
 

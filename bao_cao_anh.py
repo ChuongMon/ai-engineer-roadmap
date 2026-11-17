@@ -1,8 +1,11 @@
 from PIL import Image, UnidentifiedImageError
 import argparse
+import builtins
 import sys
 from datetime import datetime
 from pathlib import Path
+import tkinter as tk
+from tkinter.filedialog import askdirectory
 
 IMAGE_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".tif",
@@ -152,7 +155,7 @@ def build_report(
 def safe_print(text: str):
     """In ra CLI, tro ung loi ma hoa Windows cp1252."""
     try:
-        __builtins__.print(text)
+        builtins.print(text)
     except UnicodeEncodeError:
         sys.stdout.buffer.write(text.encode("cp1252", errors="replace") + b"\n")
 
@@ -160,12 +163,6 @@ def safe_print(text: str):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Doc anh trong mot thu muc bang Pillow va xuat thong ke ra file notepad."
-    )
-    parser.add_argument(
-        "--input",
-        required=False,
-        default="test_anh",
-        help="Duong dan thu muc chua anh (chi doc truc tiep, khong doc thu muc con). Mac dinh: test_anh",
     )
     parser.add_argument(
         "--output",
@@ -178,7 +175,21 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
 
-    input_folder = Path(args.input).resolve()
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        selected_folder = askdirectory(
+            title="Chon thu muc chua anh can thong ke",
+            parent=root,
+        )
+    finally:
+        root.destroy()
+
+    if not selected_folder:
+        safe_print("Da huy chon thu muc. Khong tao bao cao.")
+        return 0
+
+    input_folder = Path(selected_folder).resolve()
     output_filename = args.output
     output_path = input_folder / output_filename
 
@@ -233,6 +244,7 @@ def main(argv=None):
     safe_print("Anh bi loi:      " + str(len(error_images)))
     safe_print("File khong anh:  " + str(len(non_image_files)))
     safe_print("=" * 60)
+    return 0
 
 
 if __name__ == "__main__":

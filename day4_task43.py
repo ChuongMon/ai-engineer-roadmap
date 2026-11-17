@@ -6,12 +6,11 @@ Quan trong cho OCR cong nghiep:
   - So sanh OCR input truoc va sau preprocessing.
 
 Chay: python day4_task43.py [duong_dan_anh] [x1,y1,x2,y2,x3,y3,x4,y4]
-  - duong_dan_anh: anh dau vao (bat buoc neu khong co anh mau).
+  - duong_dan_anh: anh dau vao; neu bo qua, chon thu muc anh.
   - x1,y1,...,x4,y4: 4 toa do goc cua vung nhan (trai-tren, phai-tren,
-    phai-duoi, trai-duoi). Neu khong co, chuong trinh se bao loi thay thay
-    the bang anh synthetic.
+    phai-duoi, trai-duoi). Neu bo qua, nhap toa do trong cua so GUI.
 
-Neu khong co anh dau vao, chuong trinh tao anh mau co nhan bi nghiêng de minh hoa.
+Huy chon thu muc se chay demo synthetic co nhan bi nghieng nhu truoc.
 """
 
 from __future__ import annotations
@@ -19,9 +18,13 @@ from __future__ import annotations
 import builtins
 import sys
 from pathlib import Path
+import tkinter as tk
+from tkinter import messagebox, ttk
 
 import cv2
 import numpy as np
+
+from image_picker import select_first_image_from_folder
 
 
 def safe_print(text: str) -> None:
@@ -63,7 +66,7 @@ def load_image(path: Path | None = None) -> tuple[np.ndarray, np.ndarray | None]
     """Doc anh bang OpenCV.
 
     Neu khong co duong dan hoac file khong ton tai -> tao anh mau va tra ve pts.
-    Neu co duong dan hop le -> tra ve (anh, None) (nguoi dung phai cung cap pts qua CLI).
+    Neu co duong dan hop le -> tra ve (anh, None); caller lay toa do tu CLI hoac GUI.
     """
     if path is None or not path.exists():
         img, pts = create_synthetic_label(Path("task43_synthetic.png"))
@@ -96,6 +99,75 @@ def parse_pts(pts_str: str | None, expected: int = 8) -> np.ndarray | None:
         ],
         dtype=np.float32,
     )
+
+
+def prompt_for_points(img_shape: tuple[int, ...]) -> np.ndarray | None:
+    """Collect four label corners in a GUI form; return None if cancelled."""
+    height, width = img_shape[:2]
+    root = tk.Tk()
+    root.withdraw()
+    points: list[np.ndarray | None] = [None]
+
+    try:
+        dialog = tk.Toplevel(root)
+        dialog.title("Nhap 4 goc cua nhan")
+        dialog.resizable(False, False)
+        dialog.transient(root)
+
+        ttk.Label(
+            dialog,
+            text=(
+                f"Kich thuoc anh: {width} x {height}. Nhap toa do pixel "
+                "theo thu tu trai-tren, phai-tren, phai-duoi, trai-duoi."
+            ),
+            wraplength=430,
+        ).grid(row=0, column=0, columnspan=3, padx=12, pady=(12, 8), sticky="w")
+        ttk.Label(dialog, text="Goc").grid(row=1, column=0, padx=12, pady=4)
+        ttk.Label(dialog, text="X").grid(row=1, column=1, padx=8, pady=4)
+        ttk.Label(dialog, text="Y").grid(row=1, column=2, padx=8, pady=4)
+
+        corners = ("Trai-tren", "Phai-tren", "Phai-duoi", "Trai-duoi")
+        entries: list[ttk.Entry] = []
+        for row, corner in enumerate(corners, start=2):
+            ttk.Label(dialog, text=corner).grid(
+                row=row, column=0, padx=12, pady=4, sticky="w"
+            )
+            for column in (1, 2):
+                entry = ttk.Entry(dialog, width=12)
+                entry.grid(row=row, column=column, padx=8, pady=4)
+                entries.append(entry)
+
+        def submit() -> None:
+            try:
+                coordinates = [int(entry.get().strip()) for entry in entries]
+                selected_points = parse_pts(",".join(map(str, coordinates)))
+                if selected_points is None:
+                    raise ValueError("Can nhap du 8 toa do.")
+                validate_quadrilateral(selected_points, img_shape)
+            except ValueError as exc:
+                messagebox.showerror(
+                    "Toa do khong hop le", str(exc), parent=dialog
+                )
+                return
+
+            points[0] = selected_points
+            dialog.destroy()
+
+        def cancel() -> None:
+            dialog.destroy()
+
+        buttons = ttk.Frame(dialog)
+        buttons.grid(row=6, column=0, columnspan=3, padx=12, pady=12, sticky="e")
+        ttk.Button(buttons, text="Huy", command=cancel).pack(side="right", padx=(8, 0))
+        ttk.Button(buttons, text="Xac nhan", command=submit).pack(side="right")
+        dialog.protocol("WM_DELETE_WINDOW", cancel)
+        dialog.grab_set()
+        entries[0].focus_set()
+        root.wait_window(dialog)
+    finally:
+        root.destroy()
+
+    return points[0]
 
 
 def validate_quadrilateral(pts: np.ndarray, img_shape: tuple[int, int]) -> None:
@@ -233,21 +305,33 @@ def side_by_side(original: np.ndarray, corrected: np.ndarray, out_dir: Path) -> 
     return p
 
 
-def main() -> int:
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
-    pts_str = sys.argv[2] if len(sys.argv) > 2 else None
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if args:
+        path = Path(args[0])
+    else:
+        try:
+            path = select_first_image_from_folder(
+                "Chon thu muc anh cho Task 4.3"
+            )
+        except FileNotFoundError as exc:
+            safe_print(f"[ERROR] {exc}")
+            return 1
+        if path is None:
+            safe_print("[INFO] Da huy chon thu muc; chay demo synthetic.")
+        else:
+            safe_print(f"[INFO] Anh dau tien duoc chon: {path.name}")
+
+    pts_str = args[1] if len(args) > 1 else None
     out_dir = Path("outputs/task43")
 
     img, pts = load_image(path)
 
-    # Neu nguoi dung khong cung cap pts qua CLI va anh khong co pts (load tu file thuc),
-    # thi bao loi thay the thay the anh goc bang anh synthetic.
     if pts is None and pts_str is None:
-        raise ValueError(
-            "Can cung cap 4 toa do goc qua tham so --pts (x1,y1,x2,y2,x3,y3,x4,y4) "
-            "khi su dung anh thuc. Vi du:\n"
-            "  python day4_task43.py anh.jpg 150,100,450,120,420,280,120,260"
-        )
+        pts = prompt_for_points(img.shape)
+        if pts is None:
+            safe_print("[INFO] Da huy nhap toa do; khong tao ket qua.")
+            return 0
 
     if pts_str is not None:
         pts = parse_pts(pts_str)

@@ -21,8 +21,10 @@ Homework1/
 ├── tests/
 │   ├── test_scanner.py     # Day 3: 7 tests
 │   ├── test_report.py      # Day 3: 5 tests
-│   ├── test_task41.py      # Day 4 Task 4.1: 10 tests
+│   ├── test_task41.py      # Day 4 Task 4.1: tests
 │   ├── test_task42.py      # Day 4 Task 4.2: preprocessing tests
+│   ├── test_task43.py      # Day 4 Task 4.3: perspective transform tests
+│   ├── test_image_picker.py # chon thu muc va anh dau tien doc duoc
 │   ├── test_task51.py      # Day 5: contours / boxes
 │   ├── test_task52.py      # Day 5: IoU
 │   ├── test_task53.py      # Day 5: Hard NMS
@@ -34,6 +36,8 @@ Homework1/
 ├── system_info.py          # xuat thong tin he thong JSON (stdlib only)
 ├── day4_task41.py          # Day 4 Task 4.1 demo script
 ├── day4_task42.py          # Day 4 Task 4.2 demo script
+├── day4_task43.py          # Day 4 Task 4.3 demo script
+├── image_picker.py         # chon anh dau tien doc duoc tu thu muc
 ├── day5_task51.py          # contours and bounding boxes
 ├── day5_task52.py          # IoU utilities
 ├── day5_task53.py          # Hard NMS + visualization
@@ -78,7 +82,8 @@ Chay demo:
 ```powershell
 .venv\Scripts\python day4_task41.py [duong_dan_anh]
 ```
-Neu khong co anh dau vao, chuong trinh tao anh mau `task41_synthetic.png`.
+Neu bo qua duong dan, chuong trinh mo dialog chon thu muc va dung anh doc duoc
+dau tien theo ten file. Huy chon se chay demo synthetic `task41_synthetic.png`.
 
 Noi dung:
 - Doc anh thanh NumPy array (OpenCV).
@@ -95,7 +100,8 @@ Chay demo:
 ```powershell
 .venv\Scripts\python day4_task42.py [duong_dan_anh]
 ```
-Neu khong co anh dau vao, chuong trinh su dung/tao anh mau.
+Neu bo qua duong dan, chuong trinh mo dialog chon thu muc va dung anh doc duoc
+dau tien theo ten file. Huy chon se chay demo synthetic.
 
 Cac phuong phap thuc hien tren **cung mot anh**:
 1. Grayscale conversion
@@ -112,7 +118,10 @@ Chay demo:
 ```powershell
 .venv\Scripts\python day4_task43.py [duong_dan_anh]
 ```
-Neu khong co anh dau vao, chuong trinh tao anh mau `task43_synthetic.png` co mot nhan bi nghiêng (rotated rectangle) de minh hoa.
+Neu bo qua duong dan, chuong trinh mo dialog chon thu muc va dung anh doc duoc
+dau tien theo ten file. Huy chon se chay demo synthetic `task43_synthetic.png`.
+Voi anh that, chuong trinh mo form GUI nhap 4 cap toa do goc nhan; co the van
+truyen 8 toa do qua CLI nhu truoc.
 
 Noi dung:
 - Tao anh mau nhan bi nghiêng + toa do 4 dinh.
@@ -123,9 +132,10 @@ Noi dung:
 File dau ra: `outputs/task43/` (roi_crop, perspective_corrected, before_after).
 
 ## 9. Unit tests
-Hien co 129 tests trong `tests/` (12 Day 3 + 12 Task 4.1 + 10 Task 4.2 + 13 Task 4.3 + 22 Task 5.1 + 23 Task 5.2 + 15 Task 5.3 + 22 Task 5.4), va 11 tests trong `computer_vision_labs/tests/` — tong cong **140 tests**.
+Hien co 136 tests trong `tests/` (12 Day 3 + 13 Task 4.1 + 11 Task 4.2 + 15 Task 4.3 + 3 image-picker + 22 Task 5.1 + 23 Task 5.2 + 15 Task 5.3 + 22 Task 5.4), va 11 tests trong `computer_vision_labs/tests/` — tong cong **147 tests**.
 
-Lan xac minh local gan nhat: **140 passed**. GitHub Actions chi tao run moi sau khi push/PR; chua co run tu commit chua push nay.
+Lan xac minh local gan nhat (Homework1 tests + `test_bao_cao_anh.py`): **146 passed**.
+GitHub Actions chi tao run moi sau khi push/PR; chua co run tu commit chua push nay.
 
 **tests/test_scanner.py** (7): folder rong, anh hop le/hong, KHONG quet nested, invalid path, input khong phai thu muc, nhan dien duoi anh, checked_details.
 
