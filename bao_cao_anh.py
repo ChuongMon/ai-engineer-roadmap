@@ -163,12 +163,13 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--input",
-        required=True,
-        help="Duong dan thu muc chua anh (chi doc truc tiep, khong doc thu muc con).",
+        required=False,
+        default="test_anh",
+        help="Duong dan thu muc chua anh (chi doc truc tiep, khong doc thu muc con). Mac dinh: test_anh",
     )
     parser.add_argument(
         "--output",
-        default=DEFAULT_OUTPUT_FILENAME,
+        default="bao_cao_anh.txt",
         help="Ten file notepad xuat ket qua (mac dinh: bao_cao_anh.txt).",
     )
     return parser.parse_args(argv)
