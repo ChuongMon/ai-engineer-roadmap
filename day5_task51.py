@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import builtins
 import sys
+from math import isfinite
+from numbers import Real
 from pathlib import Path
 
 import cv2
@@ -62,9 +64,18 @@ def filter_contours_by_area(
 ) -> list[np.ndarray]:
     """Loc contour theo dien tich (cv2.contourArea).
 
-    Yeu cầu min_area >= 0 va min_area <= max_area.
+    Yeu cau cac nguong huu han, min_area >= 0 va min_area <= max_area.
     Dien tich contour tinh tu da giac cac diem tra ve, khong phai so pixel trang.
     """
+    if not isinstance(min_area, Real) or not isinstance(max_area, Real):
+        raise ValueError("min_area va max_area phai la so huu han")
+    try:
+        min_area = float(min_area)
+        max_area = float(max_area)
+    except OverflowError as exc:
+        raise ValueError("min_area va max_area phai la so huu han") from exc
+    if not isfinite(min_area) or not isfinite(max_area):
+        raise ValueError("min_area va max_area phai la so huu han")
     if min_area < 0:
         raise ValueError(f"min_area khong duoc am: {min_area}")
     if min_area > max_area:

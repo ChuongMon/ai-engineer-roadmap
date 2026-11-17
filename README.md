@@ -123,9 +123,9 @@ Noi dung:
 File dau ra: `outputs/task43/` (roi_crop, perspective_corrected, before_after).
 
 ## 9. Unit tests
-Hien co 118 tests trong `tests/` (12 Day 3 + 12 Task 4.1 + 10 Task 4.2 + 13 Task 4.3 + 17 Task 5.1 + 23 Task 5.2 + 15 Task 5.3 + 16 Task 5.4), va 11 tests trong `computer_vision_labs/tests/` — tong cong **129 tests**.
+Hien co 129 tests trong `tests/` (12 Day 3 + 12 Task 4.1 + 10 Task 4.2 + 13 Task 4.3 + 22 Task 5.1 + 23 Task 5.2 + 15 Task 5.3 + 22 Task 5.4), va 11 tests trong `computer_vision_labs/tests/` — tong cong **140 tests**.
 
-Ket qua full suite gan nhat: **129 passed**. CI chay hai nhom test rieng, nhu cac lenh ben duoi.
+Lan xac minh local gan nhat: **140 passed**. GitHub Actions chi tao run moi sau khi push/PR; chua co run tu commit chua push nay.
 
 **tests/test_scanner.py** (7): folder rong, anh hop le/hong, KHONG quet nested, invalid path, input khong phai thu muc, nhan dien duoi anh, checked_details.
 
@@ -137,25 +137,27 @@ Ket qua full suite gan nhat: **129 passed**. CI chay hai nhom test rieng, nhu ca
 
 **tests/test_task43.py** (13): tao/doc anh mau, crop ROI, perspective transform (shape, matrix, channels, canh chinh), quadrilateral validation, ROI rong va quadrilateral xoay.
 
-**tests/test_task51.py** (17): validate anh nhi phan, tim contour, loc theo dien tich, bounding box, minAreaRect/boxPoints, tao anh mau va tim du 5 contour.
+**tests/test_task51.py** (22): validate anh nhi phan, finite area bounds, tim contour, loc theo dien tich, bounding box, minAreaRect/boxPoints, tao anh mau va tim du 5 contour.
 
 **tests/test_task52.py** (23): IoU identity/disjoint/overlap/containment, hai box formats, box zero-area/toa do am/input sai, ma tran IoU, one-to-one matching va threshold.
 
 **tests/test_task53.py** (15): hard NMS, overlap/no-overlap, threshold, tie-break, index goc, xywh, scores/inputs sai va demo output.
 
-**tests/test_task54.py** (16): TP/FP/FN, Precision/Recall/F1, match theo score, duplicate detection, IoU threshold, input rong/sai va JSON report demo.
+**tests/test_task54.py** (22): TP/FP/FN, Precision/Recall/F1, AP50, mAP50-95, match theo score, NMS stage, input rong/sai va JSON report demo.
 
-Lenh chay thong nhat (CI va local):
+Chay test cua project chinh:
 ```powershell
 $env:PYTHONPATH = "src"
 .venv\Scripts\python -m pytest tests/ -v
 ```
-Hoac chay unittest cho Day 3:
+Chay toan bo suite local, gom ca computer vision labs:
 ```powershell
-.venv\Scripts\python -m unittest discover -v -s tests
+$env:PYTHONPATH = "src;computer_vision_labs/src"
+.venv\Scripts\python -m pytest tests computer_vision_labs/tests -q
 ```
 
-Ket qua moi lan chay: **26 passed** (0 warning).
+GitHub Actions chay hai nhom pytest rieng (xem muc CI ben duoi). Ket qua local
+full suite moi nhat: **140 passed**.
 
 ## 10. system_info.py (stdlib only, Day 3)
 Xuat JSON: Python version, operating system, current working directory, CPU count, `APP_ENV`, thoi gian chay script.
@@ -191,7 +193,11 @@ Chay test:
 ```
 
 ## 13. CI (GitHub Actions)
-Workflow `.github/workflows/tests.yml`: chay khi push/PR, `ubuntu-latest`, checkout, setup Python 3.12, cai `requirements.txt`, chay `python -m unittest discover -v -s tests` (voi `PYTHONPATH=src`).
+Workflow `.github/workflows/tests.yml`: khi push/PR, cai Python 3.12 va
+`requirements.txt`, sau do chay `pytest tests/ -v` voi `PYTHONPATH=src` va
+`pytest computer_vision_labs/tests/ -v` voi
+`PYTHONPATH=computer_vision_labs/src`. CI dung pytest; unittest khong con la lenh
+CI.
 
 ## 14. Day 5 — Task 5.1 (Contours và bounding boxes)
 
@@ -293,10 +299,16 @@ match chat hon; tang confidence threshold thuong giam FP nhung co the tang FN.
 
 AP la dien tich/tong hop duoi duong Precision-Recall khi quet confidence
 threshold. mAP la trung binh AP tren cac lop; mAP50 dung IoU 0.50, con mAP50-95
-lay trung binh tai cac nguong IoU 0.50, 0.55, ..., 0.95. Day lab chi tinh
-Precision/Recall/F1 tai mot nguong IoU cho mot anh/mot lop; **chua tinh AP/mAP**
-va chua danh gia model tren tap anh that. Muon so sanh model, can dataset co
-ground truth du dai dien va quy tac danh gia nhat quan.
+lay trung binh tai cac nguong IoU 0.50, 0.55, ..., 0.95. Lab tinh AP bang
+interpolated precision tren 101 recall points; vi demo chi co mot lop, AP cua lop
+nay cung la mAP tai nguong IoU do. Report ghi metrics rieng truoc NMS
+(`metrics_before_nms`) va sau NMS (`metrics_after_nms`); chi so match sau NMS
+dung index trong danh sach box da loc, mapping ve prediction goc nam trong
+`nms.kept_indices`.
+
+Phan nay van chi danh gia **mot anh/mot lop tong hop**; chua tinh mAP tren nhieu
+anh/lop, chua danh gia model tren tap anh that. Muon so sanh model, can dataset
+co ground truth du dai dien va quy tac danh gia nhat quan.
 
 ## 13. Commit & push
 ```powershell

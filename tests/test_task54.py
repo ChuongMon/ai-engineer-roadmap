@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from day5_task54 import build_demo_report, evaluate_detections, write_demo_report
+from day5_task54 import (
+    average_precision,
+    build_demo_report,
+    evaluate_detections,
+    mean_average_precision,
+    write_demo_report,
+)
 
 
 def test_evaluation_counts_true_false_positives_and_false_negatives() -> None:
@@ -105,6 +111,52 @@ def test_evaluation_supports_xywh() -> None:
     assert metrics.true_positives == 1
 
 
+def test_average_precision_is_one_for_perfect_detections() -> None:
+    boxes = [(0, 0, 10, 10), (20, 20, 30, 30)]
+
+    assert average_precision(boxes, [0.9, 0.8], boxes) == pytest.approx(1.0)
+
+
+def test_average_precision_accounts_for_high_score_false_positive() -> None:
+    gt_boxes = [(0, 0, 10, 10)]
+    pred_boxes = [(20, 20, 30, 30), (0, 0, 10, 10)]
+
+    assert average_precision(pred_boxes, [0.9, 0.8], gt_boxes) == pytest.approx(0.5)
+
+
+def test_average_precision_is_zero_without_predictions() -> None:
+    assert average_precision([], [], [(0, 0, 10, 10)]) == 0.0
+
+
+def test_average_precision_requires_ground_truths() -> None:
+    with pytest.raises(ValueError, match="ground truths"):
+        average_precision([(0, 0, 10, 10)], [0.9], [])
+
+
+def test_mean_average_precision_averages_iou_thresholds() -> None:
+    boxes = [(0, 0, 10, 10)]
+
+    assert mean_average_precision(boxes, [0.9], boxes) == pytest.approx(1.0)
+    assert mean_average_precision(
+        [(0, 0, 5, 10)],
+        [0.9],
+        boxes,
+        iou_thresholds=[0.5, 0.75],
+    ) == pytest.approx(0.5)
+    with pytest.raises(ValueError, match="must not be empty"):
+        mean_average_precision(boxes, [0.9], boxes, iou_thresholds=[])
+
+
+def test_average_precision_rejects_too_few_recall_points() -> None:
+    with pytest.raises(ValueError, match="recall_points"):
+        average_precision(
+            [(0, 0, 10, 10)],
+            [0.9],
+            [(0, 0, 10, 10)],
+            recall_points=1,
+        )
+
+
 @pytest.mark.parametrize(
     "predictions, scores, ground_truths, threshold",
     [
@@ -129,15 +181,24 @@ def test_evaluation_rejects_invalid_inputs(
 
 def test_demo_report_contains_iou_nms_and_detection_metrics() -> None:
     report = build_demo_report()
-    metrics = report["metrics"]
+    before_nms = report["metrics_before_nms"]
+    after_nms = report["metrics_after_nms"]
 
     assert len(report["iou_matrix"]) == len(report["predictions"])
     assert report["nms"]["kept_indices"]
-    assert metrics["true_positives"] == 3
-    assert metrics["false_positives"] == 2
-    assert metrics["false_negatives"] == 1
-    assert metrics["precision"] == pytest.approx(0.6)
-    assert metrics["recall"] == pytest.approx(0.75)
+    assert report["evaluation_scope"].endswith("before and after NMS.")
+    assert before_nms["true_positives"] == 3
+    assert before_nms["false_positives"] == 2
+    assert before_nms["false_negatives"] == 1
+    assert before_nms["precision"] == pytest.approx(0.6)
+    assert before_nms["recall"] == pytest.approx(0.75)
+    assert before_nms["ap50"] > 0
+    assert 0 <= before_nms["map50_95"] <= 1
+    assert after_nms["true_positives"] == 3
+    assert after_nms["false_positives"] == 1
+    assert after_nms["false_negatives"] == 1
+    assert after_nms["precision"] == pytest.approx(0.75)
+    assert after_nms["recall"] == pytest.approx(0.75)
 
 
 def test_write_demo_report_creates_json(tmp_path: Path) -> None:
@@ -145,4 +206,5 @@ def test_write_demo_report_creates_json(tmp_path: Path) -> None:
 
     data = json.loads(output_path.read_text(encoding="utf-8"))
     assert data["scope"].startswith("one image")
-    assert data["metrics"]["f1_score"] > 0
+    assert data["metrics_before_nms"]["f1_score"] > 0
+    assert data["metrics_after_nms"]["ap50"] > 0

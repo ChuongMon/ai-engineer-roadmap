@@ -102,6 +102,23 @@ def test_filter_rejects_min_greater_than_max() -> None:
         filter_contours_by_area([], min_area=200, max_area=100)
 
 
+@pytest.mark.parametrize(
+    "min_area, max_area",
+    [
+        (float("nan"), 100),
+        (0, float("nan")),
+        (float("inf"), 100),
+        (0, float("inf")),
+        (float("-inf"), 100),
+    ],
+)
+def test_filter_rejects_non_finite_area_bounds(
+    min_area: float, max_area: float
+) -> None:
+    with pytest.raises(ValueError, match="huu han"):
+        filter_contours_by_area([], min_area=min_area, max_area=max_area)
+
+
 def test_bounding_rect_matches_known_rectangle(binary_rectangle: np.ndarray) -> None:
     contours = find_contours(binary_rectangle)
     boxes = bounding_boxes(contours)

@@ -24,6 +24,9 @@ class DetectionMetrics:
     matches: tuple[tuple[int, int], ...]
 
 
+DEFAULT_MAP_IOU_THRESHOLDS = tuple(value / 100 for value in range(50, 100, 5))
+
+
 def evaluate_detections(
     pred_boxes: Sequence[Box],
     scores: Sequence[Real],
@@ -97,6 +100,92 @@ def evaluate_detections(
     )
 
 
+def average_precision(
+    pred_boxes: Sequence[Box],
+    scores: Sequence[Real],
+    gt_boxes: Sequence[Box],
+    iou_threshold: float = 0.5,
+    box_format: BoxFormat = "xyxy",
+    recall_points: int = 101,
+) -> float:
+    """Calculate 101-point interpolated AP for one image and one class.
+
+    Predictions are ranked by score. AP is undefined without ground-truth
+    objects, so that input raises ValueError.
+    """
+    if not isinstance(recall_points, int) or recall_points < 2:
+        raise ValueError("recall_points must be an integer of at least 2")
+    if not gt_boxes:
+        raise ValueError("average precision is undefined without ground truths")
+
+    metrics = evaluate_detections(
+        pred_boxes, scores, gt_boxes, iou_threshold, box_format
+    )
+    matched_predictions = {pred_idx for pred_idx, _ in metrics.matches}
+    score_values = [float(score) for score in scores]
+    ordered_predictions = sorted(
+        range(len(pred_boxes)), key=lambda idx: (-score_values[idx], idx)
+    )
+    if not ordered_predictions:
+        return 0.0
+
+    cumulative_true_positives = 0
+    cumulative_false_positives = 0
+    precision_recall_points: list[tuple[float, float]] = []
+    for pred_idx in ordered_predictions:
+        if pred_idx in matched_predictions:
+            cumulative_true_positives += 1
+        else:
+            cumulative_false_positives += 1
+        recall = cumulative_true_positives / len(gt_boxes)
+        precision = cumulative_true_positives / (
+            cumulative_true_positives + cumulative_false_positives
+        )
+        precision_recall_points.append((recall, precision))
+
+    interpolated_precisions = []
+    for point in range(recall_points):
+        target_recall = point / (recall_points - 1)
+        interpolated_precisions.append(
+            max(
+                (
+                    precision
+                    for recall, precision in precision_recall_points
+                    if recall >= target_recall
+                ),
+                default=0.0,
+            )
+        )
+    return sum(interpolated_precisions) / recall_points
+
+
+def mean_average_precision(
+    pred_boxes: Sequence[Box],
+    scores: Sequence[Real],
+    gt_boxes: Sequence[Box],
+    iou_thresholds: Sequence[float] = DEFAULT_MAP_IOU_THRESHOLDS,
+    box_format: BoxFormat = "xyxy",
+) -> float:
+    """Average AP over IoU thresholds for this single-class evaluation.
+
+    With one class, class-averaging is trivial; the default thresholds produce
+    the COCO-style mAP50-95 value for one image and one class.
+    """
+    if not iou_thresholds:
+        raise ValueError("iou_thresholds must not be empty")
+    aps = [
+        average_precision(
+            pred_boxes,
+            scores,
+            gt_boxes,
+            iou_threshold=threshold,
+            box_format=box_format,
+        )
+        for threshold in iou_thresholds
+    ]
+    return sum(aps) / len(aps)
+
+
 def build_demo_report() -> dict[str, object]:
     """Build a reproducible IoU, NMS and detection-metrics report."""
     ground_truths = [
@@ -118,10 +207,33 @@ def build_demo_report() -> dict[str, object]:
         [iou(pred, truth) for truth in ground_truths]
         for pred in predictions
     ]
-    metrics = evaluate_detections(
+    metrics_before_nms = evaluate_detections(
         predictions, scores, ground_truths, iou_threshold=threshold
     )
     kept_indices = nms(predictions, scores, threshold=0.5)
+    predictions_after_nms = [predictions[index] for index in kept_indices]
+    scores_after_nms = [scores[index] for index in kept_indices]
+    metrics_after_nms = evaluate_detections(
+        predictions_after_nms,
+        scores_after_nms,
+        ground_truths,
+        iou_threshold=threshold,
+    )
+
+    def metric_report(
+        metrics: DetectionMetrics,
+        boxes: Sequence[Box],
+        report_scores: Sequence[Real],
+    ) -> dict[str, object]:
+        return {
+            **asdict(metrics),
+            "ap50": average_precision(
+                boxes, report_scores, ground_truths, iou_threshold=0.5
+            ),
+            "map50_95": mean_average_precision(
+                boxes, report_scores, ground_truths
+            ),
+        }
 
     return {
         "scope": "one image, one class, synthetic axis-aligned boxes",
@@ -139,12 +251,20 @@ def build_demo_report() -> dict[str, object]:
                 index for index in range(len(predictions)) if index not in kept_indices
             ],
         },
-        "metrics": asdict(metrics),
+        "metrics_before_nms": metric_report(
+            metrics_before_nms, predictions, scores
+        ),
+        "metrics_after_nms": metric_report(
+            metrics_after_nms, predictions_after_nms, scores_after_nms
+        ),
         "metric_definitions": {
             "precision": "TP / (TP + FP)",
             "recall": "TP / (TP + FN)",
             "f1_score": "2 * precision * recall / (precision + recall)",
+            "ap50": "101-point interpolated AP at IoU 0.50",
+            "map50_95": "mean AP at IoU thresholds 0.50 to 0.95 by 0.05",
         },
+        "evaluation_scope": "Metrics are shown both before and after NMS.",
     }
 
 
@@ -163,9 +283,11 @@ def main() -> int:
     output_path = Path("outputs/task54/detection_report.json")
     report = build_demo_report()
     write_demo_report(output_path)
-    metrics = report["metrics"]
     print(f"Evaluation report saved to: {output_path}")
-    print(json.dumps(metrics, indent=2))
+    print("Metrics before NMS:")
+    print(json.dumps(report["metrics_before_nms"], indent=2))
+    print("Metrics after NMS:")
+    print(json.dumps(report["metrics_after_nms"], indent=2))
     return 0
 
 
